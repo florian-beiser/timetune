@@ -64,7 +64,11 @@ function something()
  */
 function exampleGame(array $options = []): Game
 {
-    $game = Game::factory()->create(['options' => [...['bonus_question' => false, 'countdown_seconds' => null], ...$options]]);
+    // Fixed name: a random year in the name could look like a leaked solution.
+    $game = Game::factory()->create([
+        'name' => 'Testkonzert',
+        'options' => [...['bonus_question' => false, 'countdown_seconds' => null], ...$options],
+    ]);
 
     $songs = [
         ['Wonderwall', 'Oasis', 1995, SongRole::Round],
