@@ -6,7 +6,9 @@ use App\Enums\GameState;
 use App\Http\Controllers\Controller;
 use App\Models\Game;
 use App\Services\GameFlow;
+use App\Services\JoinUrl;
 use App\Services\PlayerRegistrar;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -46,9 +48,14 @@ class GameActionController extends Controller
         return response()->json($this->flow->publicState($this->flow->reset($game)));
     }
 
-    public function update(Request $request, Game $game): JsonResponse
+    public function update(Request $request, Game $game, JoinUrl $joinUrl): JsonResponse
     {
         $validated = $request->validate([
+            'options.join_url' => ['sometimes', 'nullable', 'string', 'max:255', function (string $attribute, mixed $value, Closure $fail) use ($joinUrl): void {
+                if (is_string($value) && $joinUrl->normalize($value) === null) {
+                    $fail('Bitte eine gültige Adresse angeben, z. B. hitster.musikverein.at oder https://bit.ly/abc.');
+                }
+            }],
             'name' => ['sometimes', 'required', 'string', 'max:100'],
             'options.bonus_question' => ['sometimes', 'boolean'],
             'options.countdown_seconds' => ['sometimes', 'nullable', 'integer', 'min:10', 'max:600'],
@@ -58,6 +65,12 @@ class GameActionController extends Controller
         ], [
             'options.theme.*.regex' => 'Bitte eine Farbe im Format #RRGGBB angeben.',
         ]);
+
+        if (array_key_exists('join_url', $validated['options'] ?? [])) {
+            $validated['options']['join_url'] = is_string($validated['options']['join_url'])
+                ? $joinUrl->normalize($validated['options']['join_url'])
+                : null;
+        }
 
         $game->fill(array_filter(['name' => $validated['name'] ?? null]));
         $game->options = [...($game->options ?? []), ...($validated['options'] ?? [])];

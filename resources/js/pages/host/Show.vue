@@ -38,6 +38,7 @@ import {
     storeSongImage,
 } from '@/actions/App/Http/Controllers/Host/BrandingController';
 import BrandingEditor from '@/components/game/BrandingEditor.vue';
+import JoinUrlEditor from '@/components/game/JoinUrlEditor.vue';
 import LiveChip from '@/components/game/LiveChip.vue';
 import PlayerPanel from '@/components/game/PlayerPanel.vue';
 import { Button } from '@/components/ui/button';
@@ -952,11 +953,21 @@ function statusText(song: SongRow): string {
                         run(() => api(removeInactivePlayers(game.id)))
                     "
                 />
-                <BrandingEditor
-                    :game-id="game.id"
-                    :branding="branding"
-                    @changed="router.reload()"
-                />
+                <div class="flex flex-col gap-8">
+                    <JoinUrlEditor
+                        :game-id="game.id"
+                        :code="game.code"
+                        :join-url="options.join_url"
+                        :default-join-url="default_join_url"
+                        :current-join-url="join_url"
+                        @changed="router.reload()"
+                    />
+                    <BrandingEditor
+                        :game-id="game.id"
+                        :branding="branding"
+                        @changed="router.reload()"
+                    />
+                </div>
             </div>
         </div>
 

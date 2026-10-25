@@ -112,6 +112,14 @@ Die Browser holen sich die WebSocket-Adresse zur Laufzeit vom Server (`REVERB_PU
 
 **Spieler im Blick** (Moderator, alle Zustände): Die Liste „Angemeldete Spieler“ zeigt alle Beigetretenen mit Status (aktiv/inaktiv), Beitrittszeit, Abgaben und Karten, mit Filter und Suche. Die Handys senden alle 45 s ein Lebenszeichen, solange die Seite sichtbar ist. Nach 2 Minuten ohne Lebenszeichen gilt ein Spieler als inaktiv, etwa wenn die Seite geschlossen oder das Handy gesperrt ist (`config/timetune.php`, `inactive_after_seconds`). Einzelne Spieler oder alle Inaktiven lassen sich entfernen (mit Bestätigung). Ihre Karten und Abgaben werden gelöscht, das Handy zeigt einen Hinweis, und ein erneuter Beitritt ist möglich.
 
+**Beitritts-Adresse** (Moderator, alle Zustände): Statt der Adresse der App kann der QR-Code auf eine eigene Adresse zeigen, etwa eine kurze Domain oder einen Kurzlink. Regeln:
+
+- nur Host, z. B. `hitster.musikverein.at` oder `localhost:8010`: `/play/{Code}` wird angehängt
+- mit Pfad, z. B. `bit.ly/mv-hitster`: wird unverändert verwendet (der Kurzlink muss auf `…/play/{Code}` weiterleiten)
+- der Platzhalter `{code}` wird durch den Spielcode ersetzt
+
+Ohne Schema ergänzt die App `https://`, bei `localhost` und IP-Adressen `http://`. Das Feld zeigt beim Tippen, wohin der QR-Code führen wird. Leer bedeutet die Adresse der App.
+
 **Darstellung anpassen** (Moderator): Logo hochladen, Akzent- und Hintergrundfarbe wählen (mit Live-Vorschau und Kontrastwarnung) und pro Song ein Foto hinterlegen (Spalte „Foto“ in der Songliste). Ohne Anpassung sehen Spieler und Leinwand aus wie im Standard-Design. Das Logo erscheint auf Handy und Leinwand (Lobby und Siegerehrung). Das Song-Foto wird erst nach der Auflösung gezeigt: auf der umgedrehten Karte am Handy, groß auf der Leinwand und bei Startkarten in der Lobby. Handys übernehmen geänderte Farben beim nächsten Laden, die Leinwand beim nächsten Zustandswechsel.
 
 Der große Button sendet den Zustand mit, den der Moderator gesehen hat (`from`). Ein Doppelklick löst deshalb keinen zweiten Übergang aus. _Spiel zurücksetzen_ löscht Runden, Abgaben und Tiebreaker-Antworten; Spieler und Startkarten bleiben erhalten.

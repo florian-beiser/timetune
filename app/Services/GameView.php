@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  */
 class GameView
 {
-    public function __construct(private GameFlow $flow) {}
+    public function __construct(private GameFlow $flow, private JoinUrl $joinUrl) {}
 
     /**
      * Public: no solution of an open or closed round.
@@ -30,7 +30,7 @@ class GameView
         $standings = new Standings($game);
         $round = $game->currentRound();
         $isFinished = $game->state === GameState::Finished;
-        $joinUrl = route('play.show', $game->code);
+        $joinUrl = $this->joinUrl->for($game);
         $top = $standings->top(10, final: $isFinished);
 
         return [
@@ -38,7 +38,7 @@ class GameView
             'branding' => $game->branding(),
             'state' => $this->flow->publicState($game),
             'join_url' => $joinUrl,
-            'join_url_short' => (string) preg_replace('#^https?://#', '', $joinUrl),
+            'join_url_short' => $this->joinUrl->display($joinUrl),
             'qr_svg' => $game->state === GameState::Lobby ? $this->qrSvg($joinUrl) : null,
             'total_players' => $standings->playerCount(),
             'submitted' => $round && $round->skipped_at === null ? $round->placements()->count() : 0,
@@ -68,7 +68,9 @@ class GameView
             'options' => [
                 'bonus_question' => $game->bonusQuestionEnabled(),
                 'countdown_seconds' => $game->countdownSeconds(),
+                'join_url' => $game->options['join_url'] ?? null,
             ],
+            'default_join_url' => $this->joinUrl->default($game),
             'next_state' => $game->state === GameState::Finished ? null : $this->flow->naturalNextState($game)->value,
             'has_next_round' => $this->flow->hasNextRound($game),
             'has_tiebreaker_song' => $game->tiebreakerSong() !== null,

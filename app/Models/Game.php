@@ -21,7 +21,7 @@ use Illuminate\Support\Str;
  * @property string $admin_key
  * @property GameState $state
  * @property int $current_round
- * @property array{bonus_question?: bool, countdown_seconds?: int|null, theme?: array{accent: string, background: string}|null}|null $options
+ * @property array{bonus_question?: bool, countdown_seconds?: int|null, theme?: array{accent: string, background: string}|null, join_url?: string|null}|null $options
  * @property string|null $logo
  * @property Carbon|null $finished_at
  * @property Carbon|null $created_at

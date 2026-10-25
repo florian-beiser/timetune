@@ -116,7 +116,12 @@ export type SongRow = Card & {
 export type HostProps = ScreenProps & {
     host_url: string;
     screen_url: string;
-    options: { bonus_question: boolean; countdown_seconds: number | null };
+    options: {
+        bonus_question: boolean;
+        countdown_seconds: number | null;
+        join_url: string | null;
+    };
+    default_join_url: string;
     next_state: GameStateName | null;
     has_next_round: boolean;
     has_tiebreaker_song: boolean;
