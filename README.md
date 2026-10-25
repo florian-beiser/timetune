@@ -37,7 +37,71 @@ Neue Spiele legen Organisatoren im Dashboard an. Selbstregistrierung ist deshalb
 
 ### Schrift
 
-Das Design nutzt **BasierCircle** (Regular 400 / SemiBold 600). Die Schrift ist lizenzpflichtig und liegt nicht im Repository. Mit gültiger Web-Lizenz `BasierCircle-Regular.woff2` und `BasierCircle-SemiBold.woff2` nach `public/fonts/` legen. Ohne die Dateien greift der System-Font-Stack.
+Statt der lizenzpflichtigen **BasierCircle** aus dem Design-System verwendet TimeTune **Figtree** (SIL Open Font License, frei auch für kommerzielle Nutzung): eine geometrische Grotesk im selben Stil, mit den Gewichten 400 und 600. Die Schrift kommt über das npm-Paket `@fontsource/figtree` und wird mit den übrigen Assets ausgeliefert, ohne Anfrage an Google Fonts (DSGVO).
+
+## Demo mit Docker
+
+Für eine Vorführung läuft TimeTune komplett in Docker, ohne lokales PHP, Node oder eine Datenbank. Die Befehle funktionieren in PowerShell, im Windows-Terminal mit WSL und unter macOS/Linux gleich.
+
+### Schritt für Schritt
+
+1. **Docker Desktop** installieren und starten: <https://www.docker.com/products/docker-desktop/>.
+2. **Projekt holen:**
+    ```bash
+    git clone git@github.com:florian-beiser/timetune.git
+    cd timetune
+    ```
+3. **Starten.** Der erste Start baut das Image, das dauert ca. 2–3 Minuten:
+    ```bash
+    docker compose up -d --build
+    ```
+4. **Prüfen**, ob alles läuft. Alle vier Container müssen `Up` sein, `web` zusätzlich `healthy`:
+    ```bash
+    docker compose ps
+    ```
+    Im Browser am Laptop: <http://localhost:8090/play/K7M2QX> zeigt die Beitrittsseite.
+5. **Eigene Netzwerk-Adresse herausfinden.** Unter Windows `ipconfig` (IPv4-Adresse des WLAN- oder Ethernet-Adapters, z. B. `192.168.15.153`), unter macOS `ipconfig getifaddr en0`.
+6. **Leinwand und Moderator mit dieser Adresse öffnen**, nicht mit `localhost`:
+    - Leinwand (Beamer, Vollbild mit F11): `http://192.168.15.153:8090/screen/1`
+    - Moderator (zweiter Tab oder Tablet): `http://192.168.15.153:8090/host/1?key=demo-admin-key-bitte-aendern`
+7. **Handys** im selben WLAN scannen den QR-Code auf der Leinwand, geben einen Namen ein und spielen mit.
+8. **Spielen:** Im Moderator-Bereich _Spiel starten_ → pro Stück _Abgabe schließen_ → _Auflösen_ → _Nächstes Stück_. Das Demo-Spiel enthält den Beispiel-Durchlauf aus der Spezifikation (4 Stücke, Tiebreaker „The Final Countdown“).
+
+### Wenn es hakt
+
+- **Handys kommen nicht auf die Seite:**
+    - Die Leinwand muss über die Netzwerk-Adresse geöffnet sein, denn der QR-Code enthält genau die Adresse aus der Adresszeile der Leinwand. `localhost` erreichen Handys nicht. Unter WSL ist auch die `172.x`-Adresse intern, also die Windows-Adresse nehmen.
+    - Die Windows-Firewall muss Docker für private Netzwerke erlauben. Beim ersten Start kommt dazu eine Rückfrage.
+    - Gäste-WLANs isolieren Geräte oft voneinander. Dann einen Handy-Hotspot verwenden und Laptop und Handys damit verbinden.
+- **Port 8090 belegt:** anderen Port wählen.
+    - PowerShell: `$env:TIMETUNE_PORT=9000; docker compose up -d`
+    - bash/WSL/macOS: `TIMETUNE_PORT=9000 docker compose up -d`
+
+    Die Adressen oben dann mit `:9000`.
+
+- **Fehlersuche:** `docker compose logs -f web` (oder `reverb`, `queue`).
+
+### Zurücksetzen, aktualisieren, beenden
+
+- **Neue Runde mit denselben Spielern:** im Moderator-Bereich _Spiel zurücksetzen_.
+- **Komplett frisch** (Spieler, Logo, Fotos, Farben weg): `docker compose down -v`, dann `docker compose up -d`.
+- **Neue Version holen:** `git pull`, dann `docker compose up -d --build`. Daten bleiben erhalten.
+- **Beenden:** `docker compose down`. Daten bleiben erhalten.
+
+### Technik
+
+Aufbau (`compose.yaml`, ein Image für alle Rollen):
+
+| Container   | Aufgabe                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| `web`       | FrankenPHP (PHP + Caddy) auf Port 80; leitet `/app/*` (WebSockets) an Reverb weiter, migriert und seedet beim Start |
+| `reverb`    | WebSocket-Server                                                                                                    |
+| `queue`     | genau ein Queue-Worker                                                                                              |
+| `scheduler` | `schedule:work` (30-Tage-Löschung)                                                                                  |
+
+Die SQLite-Datenbank und der App-Key liegen im Volume `data`, Logos und Fotos im Volume `uploads`. Sie überstehen Neustarts und Updates.
+
+Die Browser holen sich die WebSocket-Adresse zur Laufzeit vom Server (`REVERB_PUBLIC_*`, leer = gleiche Adresse wie die Seite). Dasselbe Image funktioniert daher unter jeder IP oder Domain. Das Setup ist für Demos gedacht, nicht als gehärtete Produktionsumgebung: kein HTTPS, Demo-Schlüssel für Reverb in `compose.yaml`, Demo-Moderatorschlüssel aus dem Seeder.
 
 ## Ablauf am Konzertabend
 

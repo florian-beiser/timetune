@@ -41,4 +41,21 @@ return [
 
     'inactive_after_seconds' => 120,
 
+    /*
+    |--------------------------------------------------------------------------
+    | WebSocket address for browsers
+    |--------------------------------------------------------------------------
+    |
+    | Where phones, the screen and the moderator connect to Reverb. Empty
+    | values mean "same host and port as the page", for setups where a
+    | reverse proxy forwards /app to Reverb (Docker demo, Forge, Cloud).
+    |
+    */
+
+    'websocket' => [
+        'host' => env('REVERB_PUBLIC_HOST', env('VITE_REVERB_HOST')),
+        'port' => env('REVERB_PUBLIC_PORT', env('VITE_REVERB_PORT')),
+        'scheme' => env('REVERB_PUBLIC_SCHEME', env('VITE_REVERB_SCHEME')),
+    ],
+
 ];

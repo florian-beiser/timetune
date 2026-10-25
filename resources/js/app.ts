@@ -46,8 +46,27 @@ void createInertiaApp({
     },
 });
 
+// The WebSocket address comes from the server at runtime (see app.blade.php),
+// so one build works for every host. Without a configured host, the phone
+// connects to the host and port it loaded the page from (reverse proxy).
+const reverbMeta = (name: string): string | undefined =>
+    document
+        .querySelector(`meta[name="reverb-${name}"]`)
+        ?.getAttribute('content') || undefined;
+const pageIsHttps = window.location.protocol === 'https:';
+const reverbScheme = reverbMeta('scheme') ?? (pageIsHttps ? 'https' : 'http');
+const reverbPort = Number(
+    reverbMeta('port') ?? (window.location.port || (pageIsHttps ? 443 : 80)),
+);
+
 configureEcho({
     broadcaster: 'reverb',
+    key: reverbMeta('key') ?? import.meta.env.VITE_REVERB_APP_KEY,
+    wsHost: reverbMeta('host') ?? window.location.hostname,
+    wsPort: reverbPort,
+    wssPort: reverbPort,
+    forceTLS: reverbScheme === 'https',
+    enabledTransports: ['ws', 'wss'],
 });
 
 // This will set light / dark mode on page load...

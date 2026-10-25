@@ -3,6 +3,10 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="reverb-key" content="{{ config('broadcasting.connections.reverb.key') }}">
+        <meta name="reverb-host" content="{{ config('timetune.websocket.host') }}">
+        <meta name="reverb-port" content="{{ config('timetune.websocket.port') }}">
+        <meta name="reverb-scheme" content="{{ config('timetune.websocket.scheme') }}">
 
         {{-- Inline script to detect system dark mode preference and apply it immediately --}}
         <script>

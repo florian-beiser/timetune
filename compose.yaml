@@ -1,0 +1,86 @@
+# Local demo: docker compose up --build  ->  http://<LAN-IP>:8090
+# Phones in the same Wi-Fi scan the QR code on the screen.
+name: timetune
+
+x-app: &app
+    image: timetune:demo
+    pull_policy: never
+    restart: unless-stopped
+    volumes:
+        - data:/data
+        - uploads:/app/storage/app/public
+    environment: &env
+        APP_NAME: TimeTune
+        APP_URL: http://localhost:${TIMETUNE_PORT:-8090}
+        APP_LOCALE: de
+        BROADCAST_CONNECTION: reverb
+        QUEUE_CONNECTION: database
+        CACHE_STORE: database
+        SESSION_DRIVER: database
+        # Server -> Reverb inside the Docker network
+        REVERB_APP_ID: timetune-demo
+        REVERB_APP_KEY: timetune-demo-key
+        REVERB_APP_SECRET: timetune-demo-secret
+        REVERB_HOST: reverb
+        REVERB_PORT: 8080
+        REVERB_SCHEME: http
+        # Browsers -> Reverb: empty = same host/port as the page (Caddy forwards /app)
+        REVERB_PUBLIC_HOST: ''
+        REVERB_PUBLIC_PORT: ''
+        REVERB_PUBLIC_SCHEME: ''
+
+services:
+    web:
+        <<: *app
+        build: .
+        environment:
+            <<: *env
+            TIMETUNE_ROLE: web
+        ports:
+            - '${TIMETUNE_PORT:-8090}:80'
+        depends_on: [reverb]
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'php',
+                    '-r',
+                    "exit(@file_get_contents('http://127.0.0.1/up') === false ? 1 : 0);",
+                ]
+            interval: 10s
+            start_period: 30s
+
+    reverb:
+        <<: *app
+        environment:
+            <<: *env
+            TIMETUNE_ROLE: reverb
+        healthcheck:
+            disable: true
+        command:
+            ['php', 'artisan', 'reverb:start', '--host=0.0.0.0', '--port=8080']
+        ulimits:
+            nofile: 10000
+
+    queue:
+        <<: *app
+        environment:
+            <<: *env
+            TIMETUNE_ROLE: queue
+        healthcheck:
+            disable: true
+        # Exactly one worker: several workers on the SQLite queue lock each other.
+        command: ['php', 'artisan', 'queue:work', '--sleep=1', '--tries=3']
+
+    scheduler:
+        <<: *app
+        environment:
+            <<: *env
+            TIMETUNE_ROLE: scheduler
+        healthcheck:
+            disable: true
+        command: ['php', 'artisan', 'schedule:work']
+
+volumes:
+    data:
+    uploads:
