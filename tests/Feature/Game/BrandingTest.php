@@ -16,7 +16,7 @@ it('uses the default design until the moderator customises it', function () {
     $game = exampleGame();
 
     expect($this->get(route('screen.show', $game))->inertiaProps('branding'))
-        ->toBe(['logo_url' => null, 'theme' => null]);
+        ->toBe(['title' => 'Konzert-Hitster', 'logo_url' => null, 'theme' => null]);
 });
 
 it('stores a downscaled logo and shows it to players and the screen', function () {
@@ -79,4 +79,25 @@ it('keeps the photo of the open song secret and shows it after the reveal', func
 
     Event::assertDispatched(RoundRevealed::class, fn (RoundRevealed $event) => str_ends_with((string) $event->song['image']['lg'], "{$image}-1200.webp"));
     expect(asPlayer($anna)->getJson(route('api.players.me'))->json('result.song.image.sm'))->toEndWith("{$image}-400.webp");
+});
+
+it('lets the moderator change the title shown to players and on the screen', function () {
+    $game = exampleGame();
+
+    $this->patchJson(route('api.host.update', $game), ['options' => ['title' => '  Cäcilia-Hitster  ']], hostHeaders($game))
+        ->assertOk();
+
+    expect($this->get(route('screen.show', $game))->inertiaProps('branding.title'))->toBe('Cäcilia-Hitster')
+        ->and($this->get(route('play.show', $game->code))->inertiaProps('branding.title'))->toBe('Cäcilia-Hitster');
+
+    $this->patchJson(route('api.host.update', $game), ['options' => ['title' => '']], hostHeaders($game))->assertOk();
+    expect($game->refresh()->title())->toBe('Konzert-Hitster');
+});
+
+it('limits the title length', function () {
+    $game = exampleGame();
+
+    $this->patchJson(route('api.host.update', $game), ['options' => ['title' => str_repeat('x', 41)]], hostHeaders($game))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('options.title');
 });

@@ -93,6 +93,39 @@ class GameFlow
     }
 
     /**
+     * Opens the closed round again, e.g. when it was closed too early.
+     * Only before the reveal: afterwards everyone knows the solution.
+     * Placements stay and can be changed until the round is closed again.
+     */
+    public function reopenRound(Game $game): Game
+    {
+        $game = $this->transaction($game, function (Game $game): void {
+            if ($game->state !== GameState::RoundClosed) {
+                throw new GameFlowException('Nur eine geschlossene, noch nicht aufgelöste Runde kann wieder geöffnet werden.');
+            }
+
+            $round = $this->requireCurrentRound($game);
+            $countdown = $game->countdownSeconds();
+
+            $round->update([
+                'closed_at' => null,
+                'closes_at' => $countdown ? now()->addSeconds($countdown) : null,
+            ]);
+            $game->update(['state' => GameState::RoundOpen]);
+
+            if ($round->closes_at !== null) {
+                CloseRoundAfterCountdown::dispatch($game->id, $round->id, $round->closes_at->toIso8601String())
+                    ->delay($round->closes_at)
+                    ->afterCommit();
+            }
+        });
+
+        $this->broadcastTransition($game);
+
+        return $game;
+    }
+
+    /**
      * Back to the lobby: all rounds, placements and tiebreak answers are
      * removed. Players and their start cards stay.
      */
@@ -112,11 +145,16 @@ class GameFlow
     /**
      * Closes the round when its countdown has expired (called from a queued job).
      */
-    public function closeAfterCountdown(Game $game, int $roundId): void
+    public function closeAfterCountdown(Game $game, int $roundId, ?string $closesAt = null): void
     {
         $round = $game->currentRound();
 
         if ($game->state !== GameState::RoundOpen || $round?->id !== $roundId) {
+            return;
+        }
+
+        // A reopened round has a new countdown; the old job must not close it.
+        if ($closesAt !== null && $round->closes_at?->toIso8601String() !== $closesAt) {
             return;
         }
 
@@ -258,7 +296,7 @@ class GameFlow
         $game->update(['state' => GameState::RoundOpen, 'current_round' => $number]);
 
         if ($countdown) {
-            CloseRoundAfterCountdown::dispatch($game->id, $round->id)->delay($round->closes_at)->afterCommit();
+            CloseRoundAfterCountdown::dispatch($game->id, $round->id, $round->closes_at?->toIso8601String())->delay($round->closes_at)->afterCommit();
         }
     }
 

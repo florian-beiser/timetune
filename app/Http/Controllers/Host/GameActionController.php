@@ -38,6 +38,11 @@ class GameActionController extends Controller
         return response()->json($this->flow->publicState($game));
     }
 
+    public function reopen(Game $game): JsonResponse
+    {
+        return response()->json($this->flow->publicState($this->flow->reopenRound($game)));
+    }
+
     public function skip(Game $game): JsonResponse
     {
         return response()->json($this->flow->publicState($this->flow->skipRound($game)));
@@ -59,12 +64,19 @@ class GameActionController extends Controller
             'name' => ['sometimes', 'required', 'string', 'max:100'],
             'options.bonus_question' => ['sometimes', 'boolean'],
             'options.countdown_seconds' => ['sometimes', 'nullable', 'integer', 'min:10', 'max:600'],
+            'options.title' => ['sometimes', 'nullable', 'string', 'max:'.Game::MAX_TITLE_LENGTH],
             'options.theme' => ['sometimes', 'nullable', 'array:accent,background'],
             'options.theme.accent' => ['required_with:options.theme', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'options.theme.background' => ['required_with:options.theme', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ], [
             'options.theme.*.regex' => 'Bitte eine Farbe im Format #RRGGBB angeben.',
+            'options.title.max' => 'Der Titel darf höchstens :max Zeichen lang sein.',
         ]);
+
+        if (array_key_exists('title', $validated['options'] ?? [])) {
+            $title = trim((string) $validated['options']['title']);
+            $validated['options']['title'] = $title === '' ? null : $title;
+        }
 
         if (array_key_exists('join_url', $validated['options'] ?? [])) {
             $validated['options']['join_url'] = is_string($validated['options']['join_url'])
@@ -77,6 +89,20 @@ class GameActionController extends Controller
         $game->save();
 
         return response()->json(['name' => $game->name, 'options' => $game->options]);
+    }
+
+    public function renamePlayer(Request $request, Game $game, int $player, PlayerRegistrar $registrar): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:'.PlayerRegistrar::MAX_NAME_LENGTH],
+        ], [
+            'name.required' => 'Bitte einen Namen angeben.',
+            'name.max' => 'Höchstens :max Zeichen.',
+        ]);
+
+        $model = $registrar->rename($game->players()->findOrFail($player), $validated['name'], byModerator: true);
+
+        return response()->json(['id' => $model->id, 'name' => $model->name]);
     }
 
     public function removePlayer(Game $game, int $player, PlayerRegistrar $registrar): Response

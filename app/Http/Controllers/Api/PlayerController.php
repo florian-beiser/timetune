@@ -59,6 +59,20 @@ class PlayerController extends Controller
         return response()->json($this->view->me($player));
     }
 
+    public function rename(Request $request, PlayerRegistrar $registrar): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:'.PlayerRegistrar::MAX_NAME_LENGTH],
+        ], [
+            'name.required' => 'Bitte gib deinen Namen ein.',
+            'name.max' => 'Höchstens :max Zeichen.',
+        ]);
+
+        $player = $registrar->rename($this->player($request), $validated['name']);
+
+        return response()->json(['name' => $player->name]);
+    }
+
     /**
      * Sent every 45 s while the page is visible; marks the player as active.
      */

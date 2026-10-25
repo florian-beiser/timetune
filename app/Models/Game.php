@@ -21,7 +21,7 @@ use Illuminate\Support\Str;
  * @property string $admin_key
  * @property GameState $state
  * @property int $current_round
- * @property array{bonus_question?: bool, countdown_seconds?: int|null, theme?: array{accent: string, background: string}|null, join_url?: string|null}|null $options
+ * @property array{bonus_question?: bool, countdown_seconds?: int|null, theme?: array{accent: string, background: string}|null, join_url?: string|null, title?: string|null}|null $options
  * @property string|null $logo
  * @property Carbon|null $finished_at
  * @property Carbon|null $created_at
@@ -33,6 +33,10 @@ class Game extends Model
 {
     /** @use HasFactory<GameFactory> */
     use HasFactory;
+
+    public const DEFAULT_TITLE = 'Konzert-Hitster';
+
+    public const MAX_TITLE_LENGTH = 40;
 
     /**
      * Characters for game codes, without easily confused ones (0/O, 1/I/L).
@@ -128,6 +132,16 @@ class Game extends Model
     }
 
     /**
+     * Title shown big on the screen and on the phones.
+     */
+    public function title(): string
+    {
+        $title = $this->options['title'] ?? null;
+
+        return is_string($title) && $title !== '' ? $title : self::DEFAULT_TITLE;
+    }
+
+    /**
      * Custom colours of the player and screen views; null means the default design.
      *
      * @return array{accent: string, background: string}|null
@@ -145,11 +159,12 @@ class Game extends Model
     /**
      * Logo and colours as sent to players, the screen and the moderator.
      *
-     * @return array{logo_url: string|null, theme: array{accent: string, background: string}|null}
+     * @return array{title: string, logo_url: string|null, theme: array{accent: string, background: string}|null}
      */
     public function branding(): array
     {
         return [
+            'title' => $this->title(),
             'logo_url' => $this->logo ? app(ImageStore::class)->url($this->imageDirectory(), $this->logo, 480) : null,
             'theme' => $this->theme(),
         ];

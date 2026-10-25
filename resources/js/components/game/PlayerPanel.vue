@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Eye, EyeOff, Search, Trash2, UserX } from '@lucide/vue';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { Eye, EyeOff, Pencil, Search, Trash2, UserX } from '@lucide/vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { renamePlayer } from '@/actions/App/Http/Controllers/Host/GameActionController';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -11,9 +12,11 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { api } from '@/lib/api';
 import type { HostPlayer } from '@/types/game';
 
 const props = defineProps<{
+    gameId: number;
     players: HostPlayer[];
     roundsPlayed: number;
     inactiveAfterSeconds: number;
@@ -24,7 +27,45 @@ const emit = defineEmits<{
     toggleHidden: [player: HostPlayer];
     remove: [player: HostPlayer];
     removeInactive: [];
+    renamed: [];
 }>();
+
+// Inline rename (the moderator may also fix offensive or mistyped names)
+const editingId = ref<number | null>(null);
+const draftName = ref('');
+const renameError = ref<string | null>(null);
+const renaming = ref(false);
+
+async function startRename(player: HostPlayer) {
+    editingId.value = player.id;
+    draftName.value = player.name;
+    renameError.value = null;
+    await nextTick();
+    document.querySelector<HTMLInputElement>('#rename-player')?.select();
+}
+
+async function saveRename(player: HostPlayer) {
+    if (draftName.value.trim() === player.name) {
+        editingId.value = null;
+
+        return;
+    }
+
+    renaming.value = true;
+    renameError.value = null;
+
+    try {
+        await api(renamePlayer([props.gameId, player.id]), {
+            name: draftName.value,
+        });
+        editingId.value = null;
+        emit('renamed');
+    } catch (e) {
+        renameError.value = e instanceof Error ? e.message : String(e);
+    } finally {
+        renaming.value = false;
+    }
+}
 
 type Filter = 'all' | 'active' | 'inactive';
 const filter = ref<Filter>('all');
@@ -179,15 +220,57 @@ function confirmRemoval() {
                         class="border-t border-navy/10"
                         :class="index % 2 ? 'bg-royal/5' : 'bg-white'"
                     >
-                        <td class="max-w-48 truncate px-3 py-1.5">
-                            <span
-                                :class="{
-                                    'text-navy/40 line-through':
-                                        player.is_hidden,
-                                }"
+                        <td class="max-w-56 px-3 py-1.5">
+                            <form
+                                v-if="editingId === player.id"
+                                class="flex flex-col gap-1"
+                                @submit.prevent="saveRename(player)"
                             >
-                                {{ player.name }}
-                            </span>
+                                <span class="flex gap-1">
+                                    <input
+                                        id="rename-player"
+                                        v-model="draftName"
+                                        maxlength="20"
+                                        aria-label="Neuer Name"
+                                        class="h-7 w-32 rounded border border-royal px-1.5 text-sm outline-none"
+                                        @keydown.esc="editingId = null"
+                                    />
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        class="h-7"
+                                        :disabled="renaming"
+                                    >
+                                        OK
+                                    </Button>
+                                </span>
+                                <span
+                                    v-if="renameError"
+                                    class="text-xs text-alert"
+                                >
+                                    {{ renameError }}
+                                </span>
+                            </form>
+                            <button
+                                v-else
+                                type="button"
+                                class="group flex max-w-full items-center gap-1.5 text-left"
+                                title="Namen ändern"
+                                @click="startRename(player)"
+                            >
+                                <span
+                                    class="truncate"
+                                    :class="{
+                                        'text-navy/40 line-through':
+                                            player.is_hidden,
+                                    }"
+                                >
+                                    {{ player.name }}
+                                </span>
+                                <Pencil
+                                    class="size-3 shrink-0 text-navy/30 group-hover:text-royal"
+                                />
+                            </button>
                         </td>
                         <td class="px-3 py-1.5 whitespace-nowrap">
                             <span class="flex items-center gap-1.5">

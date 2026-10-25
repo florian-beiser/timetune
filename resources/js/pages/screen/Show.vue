@@ -13,6 +13,17 @@ const props = defineProps<ScreenProps>();
 
 const themeVars = useTheme(() => props.branding.theme);
 
+// Long custom titles get smaller so they fit next to the QR code.
+const titleClass = computed(() => {
+    const length = props.branding.title.length;
+
+    return length <= 16
+        ? 'text-8xl'
+        : length <= 26
+          ? 'text-7xl'
+          : 'text-[56px]';
+});
+
 const submitted = ref(props.submitted);
 const totalPlayers = ref(props.total_players);
 
@@ -100,8 +111,11 @@ const rest = computed<LeaderboardRow[]>(() => props.top10.slice(3));
                         class="mb-2 max-h-20 max-w-80 self-start object-contain"
                     />
                     <div class="text-xl text-white/75">{{ game.name }}</div>
-                    <div class="text-8xl leading-none font-semibold">
-                        Konzert-<br />Hitster
+                    <div
+                        class="leading-none font-semibold text-balance break-words"
+                        :class="titleClass"
+                    >
+                        {{ branding.title }}
                     </div>
                     <div
                         class="max-w-140 text-[26px] leading-snug text-pretty text-white/75"

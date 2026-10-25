@@ -24,6 +24,7 @@ Route::get('host/{game}', [HostController::class, 'show'])->middleware(EnsureHos
 Route::prefix('api')->name('api.')->group(function () {
     Route::post('games/{code}/join', [PlayerController::class, 'join'])->middleware('throttle:join')->name('join');
     Route::get('players/me', [PlayerController::class, 'me'])->name('players.me');
+    Route::patch('players/me', [PlayerController::class, 'rename'])->middleware('throttle:submit')->name('players.rename');
     Route::post('players/me/heartbeat', [PlayerController::class, 'heartbeat'])->middleware('throttle:submit')->name('players.heartbeat');
     Route::put('rounds/{round}/placement', [PlayerController::class, 'place'])->middleware('throttle:submit')->name('rounds.placement');
     Route::put('rounds/{round}/bonus', [PlayerController::class, 'answerBonus'])->middleware('throttle:submit')->name('rounds.bonus');
@@ -34,10 +35,12 @@ Route::prefix('api')->name('api.')->group(function () {
     Route::prefix('host/games/{game}')->name('host.')->middleware(EnsureHostAccess::class)->group(function () {
         Route::post('advance', [GameActionController::class, 'advance'])->name('advance');
         Route::post('skip', [GameActionController::class, 'skip'])->name('skip');
+        Route::post('reopen', [GameActionController::class, 'reopen'])->name('reopen');
         Route::post('reset', [GameActionController::class, 'reset'])->name('reset');
         Route::patch('/', [GameActionController::class, 'update'])->name('update');
         Route::post('players/{player}/toggle-hidden', [GameActionController::class, 'togglePlayer'])->name('players.toggle');
         Route::delete('players/inactive', [GameActionController::class, 'removeInactivePlayers'])->name('players.remove-inactive');
+        Route::patch('players/{player}', [GameActionController::class, 'renamePlayer'])->whereNumber('player')->name('players.rename');
         Route::delete('players/{player}', [GameActionController::class, 'removePlayer'])->whereNumber('player')->name('players.remove');
         Route::post('logo', [BrandingController::class, 'storeLogo'])->name('logo.store');
         Route::delete('logo', [BrandingController::class, 'destroyLogo'])->name('logo.destroy');

@@ -115,10 +115,6 @@ function uploadLogo(event: Event) {
 
 <template>
     <section class="flex flex-col gap-4">
-        <h2 class="text-sm font-semibold">
-            Darstellung für Spieler und Leinwand
-        </h2>
-
         <div class="grid gap-5 sm:grid-cols-[minmax(0,1fr)_200px]">
             <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2">
@@ -244,8 +240,8 @@ function uploadLogo(event: Event) {
                         alt=""
                         class="max-h-6 max-w-28 object-contain"
                     />
-                    <span v-else class="text-xs font-semibold">
-                        Konzert-Hitster
+                    <span v-else class="truncate text-xs font-semibold">
+                        {{ branding.title }}
                     </span>
                     <div
                         class="mx-auto flex h-12 w-10 items-center justify-center rounded-md bg-royal text-xl font-semibold"

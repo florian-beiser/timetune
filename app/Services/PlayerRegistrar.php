@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\GameState;
 use App\Enums\SongRole;
 use App\Events\PlayerRemoved;
+use App\Events\PlayerRenamed;
 use App\Exceptions\GameFlowException;
 use App\Models\Game;
 use App\Models\Player;
@@ -43,6 +44,35 @@ class PlayerRegistrar
         });
 
         $this->flow->queueSubmissionsCount($game);
+
+        return $player;
+    }
+
+    /**
+     * Changes a display name. Equal names are numbered as when joining.
+     * The word filter does not apply to the moderator, who renames
+     * offensive names; the phone is told about the moderator's change.
+     */
+    public function rename(Player $player, string $name, bool $byModerator = false): Player
+    {
+        $name = $this->normalizeName($name);
+
+        if ($name === '') {
+            throw ValidationException::withMessages(['name' => 'Bitte gib einen Namen ein.']);
+        }
+
+        if (! $byModerator && $this->isOffensive($name)) {
+            throw ValidationException::withMessages(['name' => 'Bitte wähle einen anderen Namen.']);
+        }
+
+        DB::transaction(function () use ($player, $name): void {
+            $game = Game::query()->lockForUpdate()->findOrFail($player->game_id);
+            $player->update(['name' => $this->uniqueName($game, $name, exceptPlayerId: $player->id)]);
+        });
+
+        if ($byModerator) {
+            event(new PlayerRenamed($player->id, $player->name));
+        }
 
         return $player;
     }
@@ -100,10 +130,11 @@ class PlayerRegistrar
     /**
      * Equal names are numbered: "Anna", "Anna 2", "Anna 3" ...
      */
-    private function uniqueName(Game $game, string $name): string
+    private function uniqueName(Game $game, string $name, ?int $exceptPlayerId = null): string
     {
         $lower = mb_strtolower($name);
         $taken = $game->players()
+            ->when($exceptPlayerId, fn ($query) => $query->whereKeyNot($exceptPlayerId))
             ->where(fn ($query) => $query
                 ->whereRaw('lower(name) = ?', [$lower])
                 ->orWhereRaw('substr(lower(name), 1, ?) = ?', [mb_strlen($lower) + 1, $lower.' ']))

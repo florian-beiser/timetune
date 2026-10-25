@@ -19,6 +19,7 @@ export type Card = {
 export type Theme = { accent: string; background: string };
 
 export type Branding = {
+    title: string;
     logo_url: string | null;
     theme: Theme | null;
 };

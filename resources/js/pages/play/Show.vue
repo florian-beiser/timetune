@@ -22,6 +22,7 @@ import {
     tiebreak,
 } from '@/actions/App/Http/Controllers/Api/PlayerController';
 import LiveChip from '@/components/game/LiveChip.vue';
+import PlayerNameEditor from '@/components/game/PlayerNameEditor.vue';
 import TimelineCard from '@/components/game/TimelineCard.vue';
 import { useLive } from '@/composables/useLive';
 import { useTheme } from '@/composables/useTheme';
@@ -106,6 +107,11 @@ function applyState(next: PublicState) {
         flipped.value = false;
     }
 
+    // A reopened round: players who joined after closing may now take part.
+    if (next.state === 'ROUND_OPEN' && me.value.joined_round === null) {
+        me.value.joined_round = next.round_number;
+    }
+
     window.clearTimeout(resultFallback);
 
     if (next.state === 'REVEALED' && !next.round_skipped) {
@@ -149,6 +155,11 @@ const { isLive } = useLive({
         PlayerResult: applyResult,
         PlayerRemoved: (payload: { message: string }) =>
             handleRemoved(payload.message),
+        PlayerRenamed: (payload: { name: string }) => {
+            if (me.value) {
+                me.value.player.name = payload.name;
+            }
+        },
     },
     poll: refresh,
 });
@@ -408,8 +419,10 @@ function onTiebreakInput(event: Event) {
                         <Music class="size-3.5" />
                         <span>{{ game.name }} · Spielcode {{ game.code }}</span>
                     </div>
-                    <h1 class="text-[32px] leading-tight font-semibold">
-                        Konzert-Hitster
+                    <h1
+                        class="text-[32px] leading-tight font-semibold break-words"
+                    >
+                        {{ branding.title }}
                     </h1>
                     <p
                         class="text-base leading-normal text-pretty text-white/75"
@@ -503,9 +516,9 @@ function onTiebreakInput(event: Event) {
                         :alt="game.name"
                         class="h-6 max-w-40 object-contain"
                     />
-                    <span v-else class="text-sm font-semibold"
-                        >Konzert-Hitster</span
-                    >
+                    <span v-else class="truncate text-sm font-semibold">{{
+                        branding.title
+                    }}</span>
                     <span class="text-xs text-white/50">{{
                         me.player.name
                     }}</span>
@@ -938,9 +951,9 @@ function onTiebreakInput(event: Event) {
                         :alt="game.name"
                         class="h-6 max-w-40 object-contain"
                     />
-                    <span v-else class="text-sm font-semibold"
-                        >Konzert-Hitster</span
-                    >
+                    <span v-else class="truncate text-sm font-semibold">{{
+                        branding.title
+                    }}</span>
                     <span
                         class="rounded-full bg-white/15 px-2.5 py-0.5 text-xs"
                     >
@@ -1026,6 +1039,12 @@ function onTiebreakInput(event: Event) {
                     </div>
                 </div>
             </template>
+
+            <PlayerNameEditor
+                v-if="me"
+                :name="me.player.name"
+                @renamed="(name) => me && (me.player.name = name)"
+            />
         </div>
     </div>
 </template>

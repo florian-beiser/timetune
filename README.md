@@ -65,7 +65,7 @@ Für eine Vorführung läuft TimeTune komplett in Docker, ohne lokales PHP, Node
     - Leinwand (Beamer, Vollbild mit F11): `http://192.168.15.153:8090/screen/1`
     - Moderator (zweiter Tab oder Tablet): `http://192.168.15.153:8090/host/1?key=demo-admin-key-bitte-aendern`
 7. **Handys** im selben WLAN scannen den QR-Code auf der Leinwand, geben einen Namen ein und spielen mit.
-8. **Spielen:** Im Moderator-Bereich _Spiel starten_ → pro Stück _Abgabe schließen_ → _Auflösen_ → _Nächstes Stück_. Das Demo-Spiel enthält den Beispiel-Durchlauf aus der Spezifikation (4 Stücke, Tiebreaker „The Final Countdown“).
+8. **Spielen:** Im Moderator-Bereich, Tab _Steuerung_: _Spiel starten_ → pro Stück _Abgabe schließen_ → _Auflösen_ → _Nächstes Stück_. Das Demo-Spiel enthält den Beispiel-Durchlauf aus der Spezifikation (4 Stücke, Tiebreaker „The Final Countdown“).
 
 ### Wenn es hakt
 
@@ -83,7 +83,7 @@ Für eine Vorführung läuft TimeTune komplett in Docker, ohne lokales PHP, Node
 
 ### Zurücksetzen, aktualisieren, beenden
 
-- **Neue Runde mit denselben Spielern:** im Moderator-Bereich _Spiel zurücksetzen_.
+- **Neue Runde mit denselben Spielern:** im Moderator-Bereich unter _Einstellungen → Gefahrenzone_ _Spiel zurücksetzen_.
 - **Komplett frisch** (Spieler, Logo, Fotos, Farben weg): `docker compose down -v`, dann `docker compose up -d`.
 - **Neue Version holen:** `git pull`, dann `docker compose up -d --build`. Daten bleiben erhalten.
 - **Beenden:** `docker compose down`. Daten bleiben erhalten.
@@ -172,14 +172,23 @@ Im Browser (Entwicklertools → Netzwerk) dürfen keine `http://`-Anfragen und k
 
 ## Ablauf am Konzertabend
 
+Der Moderator-Bereich hat vier Tabs. Der gewählte Tab steht in der Adresse (`#steuerung`, `#spieler`, `#songs`, `#einstellungen`) und bleibt beim Neuladen erhalten.
+
+| Tab               | Inhalt                                                                                                                                                                                                                                                                                                                                    |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Steuerung**     | In der Lobby eine Bereitschafts-Checkliste (Songs, Startkarten, Tiebreaker, Spieler, QR-Adresse) und _Spiel starten_. Danach Status, aktuelles Stück mit Lösung, Abgaben, der Button für den nächsten Schritt, _Runde wieder öffnen_, _Runde überspringen_, Song-Fortschritt und Top 10. Bei offener Runde blinkt ein roter Punkt am Tab. |
+| **Spieler**       | Alle Beigetretenen mit Aktivität; umbenennen, ausblenden, entfernen. Der Tab zeigt Anzahl und Inaktive.                                                                                                                                                                                                                                   |
+| **Songs**         | Runden-Songs, Startkarten-Pool, Tiebreaker; CSV-Import, Fotos, Drag & Drop. Nach dem Start nur lesbar, Fotos bleiben änderbar.                                                                                                                                                                                                            |
+| **Einstellungen** | Spiel (Name, Titel, Bonusfrage, Countdown), Beitritts-Adresse, Darstellung (Logo, Farben, Vorschau) und die Gefahrenzone mit _Spiel zurücksetzen_.                                                                                                                                                                                        |
+
 1. **Vorbereitung** (Moderator, Zustand `LOBBY`): Songs anlegen oder per CSV importieren, Runden-Songs per Drag & Drop sortieren, Startkarten-Pool und Tiebreaker-Song festlegen, Optionen (Bonusfrage, Countdown) setzen. Songs lassen sich nur vor Spielstart ändern.
 2. **Leinwand** öffnen (Link im Moderator-Kopf): QR-Code, Spielcode, Live-Zähler der Spieler.
 3. **Spiel starten** → pro Stück: _Abgabe schließen_ → _Auflösen_ → _Nächstes Stück_. Wird ein Stück nicht gespielt: _Runde überspringen_ (wird für niemanden gewertet).
 4. Nach dem letzten Stück: _Tiebreaker starten_ (empfohlen bei Gleichstand auf dem Podium) oder direkt _Ergebnis zeigen_.
 
-**Spieler im Blick** (Moderator, alle Zustände): Die Liste „Angemeldete Spieler“ zeigt alle Beigetretenen mit Status (aktiv/inaktiv), Beitrittszeit, Abgaben und Karten, mit Filter und Suche. Die Handys senden alle 45 s ein Lebenszeichen, solange die Seite sichtbar ist. Nach 2 Minuten ohne Lebenszeichen gilt ein Spieler als inaktiv, etwa wenn die Seite geschlossen oder das Handy gesperrt ist (`config/timetune.php`, `inactive_after_seconds`). Einzelne Spieler oder alle Inaktiven lassen sich entfernen (mit Bestätigung). Ihre Karten und Abgaben werden gelöscht, das Handy zeigt einen Hinweis, und ein erneuter Beitritt ist möglich.
+**Spieler im Blick** (Tab _Spieler_): Die Liste „Angemeldete Spieler“ zeigt alle Beigetretenen mit Status (aktiv/inaktiv), Beitrittszeit, Abgaben und Karten, mit Filter und Suche. Die Handys senden alle 45 s ein Lebenszeichen, solange die Seite sichtbar ist. Nach 2 Minuten ohne Lebenszeichen gilt ein Spieler als inaktiv, etwa wenn die Seite geschlossen oder das Handy gesperrt ist (`config/timetune.php`, `inactive_after_seconds`). Einzelne Spieler oder alle Inaktiven lassen sich entfernen (mit Bestätigung). Ihre Karten und Abgaben werden gelöscht, das Handy zeigt einen Hinweis, und ein erneuter Beitritt ist möglich.
 
-**Beitritts-Adresse** (Moderator, alle Zustände): Statt der Adresse der App kann der QR-Code auf eine eigene Adresse zeigen, etwa eine kurze Domain oder einen Kurzlink. Regeln:
+**Beitritts-Adresse** (Tab _Einstellungen_): Statt der Adresse der App kann der QR-Code auf eine eigene Adresse zeigen, etwa eine kurze Domain oder einen Kurzlink. Regeln:
 
 - nur Host, z. B. `hitster.musikverein.at` oder `localhost:8010`: `/play/{Code}` wird angehängt
 - mit Pfad, z. B. `bit.ly/mv-hitster`: wird unverändert verwendet (der Kurzlink muss auf `…/play/{Code}` weiterleiten)
@@ -187,7 +196,11 @@ Im Browser (Entwicklertools → Netzwerk) dürfen keine `http://`-Anfragen und k
 
 Ohne Schema ergänzt die App `https://`, bei `localhost` und IP-Adressen `http://`. Das Feld zeigt beim Tippen, wohin der QR-Code führen wird. Leer bedeutet die Adresse der App.
 
-**Darstellung anpassen** (Moderator): Logo hochladen, Akzent- und Hintergrundfarbe wählen (mit Live-Vorschau und Kontrastwarnung) und pro Song ein Foto hinterlegen (Spalte „Foto“ in der Songliste). Ohne Anpassung sehen Spieler und Leinwand aus wie im Standard-Design. Das Logo erscheint auf Handy und Leinwand (Lobby und Siegerehrung). Das Song-Foto wird erst nach der Auflösung gezeigt: auf der umgedrehten Karte am Handy, groß auf der Leinwand und bei Startkarten in der Lobby. Handys übernehmen geänderte Farben beim nächsten Laden, die Leinwand beim nächsten Zustandswechsel.
+**Darstellung anpassen** (Tab _Einstellungen_): Titel ändern (statt „Konzert-Hitster“, z. B. „Cäcilia-Hitster“; höchstens 40 Zeichen, auf der Leinwand wird lange Schrift automatisch kleiner), Logo hochladen, Akzent- und Hintergrundfarbe wählen (mit Live-Vorschau und Kontrastwarnung) und pro Song ein Foto hinterlegen (Spalte „Foto“ in der Songliste). Ohne Anpassung sehen Spieler und Leinwand aus wie im Standard-Design. Das Logo erscheint auf Handy und Leinwand (Lobby und Siegerehrung). Das Song-Foto wird erst nach der Auflösung gezeigt: auf der umgedrehten Karte am Handy, groß auf der Leinwand und bei Startkarten in der Lobby. Handys übernehmen geänderte Farben beim nächsten Laden, die Leinwand beim nächsten Zustandswechsel.
+
+**Runde wieder öffnen:** Wurde eine Runde zu früh geschlossen, öffnet _Runde wieder öffnen_ sie erneut. Das geht nur vor dem _Auflösen_, danach kennen alle die Lösung. Abgegebene Lücken bleiben erhalten und lassen sich bis zum erneuten Schließen ändern. Wer nach dem Schließen beigetreten ist, darf jetzt ebenfalls abgeben. Ein laufender Countdown startet neu.
+
+**Namen ändern:** Spieler ändern ihren Namen jederzeit über „Name ändern“ unten auf dem Handy. Es gelten dieselben Regeln wie beim Beitritt: höchstens 20 Zeichen, Wortfilter, gleiche Namen werden nummeriert. Der Moderator ändert Namen über den Stift neben dem Namen in der Spielerliste, auch um anstößige Namen zu ersetzen; der Wortfilter gilt dort nicht. Das Handy zeigt den neuen Namen sofort an.
 
 Der große Button sendet den Zustand mit, den der Moderator gesehen hat (`from`). Ein Doppelklick löst deshalb keinen zweiten Übergang aus. _Spiel zurücksetzen_ löscht Runden, Abgaben und Tiebreaker-Antworten; Spieler und Startkarten bleiben erhalten.
 
