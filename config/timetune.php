@@ -58,4 +58,19 @@ return [
         'scheme' => env('REVERB_PUBLIC_SCHEME', env('VITE_REVERB_SCHEME')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Trusted reverse proxies
+    |--------------------------------------------------------------------------
+    |
+    | Proxies whose X-Forwarded-For/-Host/-Port/-Proto/-Prefix headers are
+    | trusted, so that URLs, redirects and assets use https behind a TLS
+    | proxy. Comma-separated IPs or CIDR ranges; "private" stands for all
+    | private and local networks (Docker, LAN); "*" trusts the direct peer.
+    | Empty (default): no proxy is trusted, forwarded headers are ignored.
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
 ];

@@ -1,5 +1,9 @@
 # Local demo: docker compose up --build  ->  http://<LAN-IP>:8090
 # Phones in the same Wi-Fi scan the QR code on the screen.
+#
+# Behind an HTTPS reverse proxy: docker compose --env-file docker/proxy.env up -d
+# (see docker/proxy.env.example). Variables are prefixed with TIMETUNE_ so
+# that Laravel's own .env in this folder does not leak into Compose.
 name: timetune
 
 x-app: &app
@@ -11,7 +15,10 @@ x-app: &app
         - uploads:/app/storage/app/public
     environment: &env
         APP_NAME: TimeTune
-        APP_URL: http://localhost:${TIMETUNE_PORT:-8090}
+        APP_URL: ${TIMETUNE_APP_URL:-http://localhost:${TIMETUNE_PORT:-8090}}
+        # Reverse proxies whose X-Forwarded-* headers are trusted (empty = none)
+        TRUSTED_PROXIES: ${TIMETUNE_TRUSTED_PROXIES:-}
+        SESSION_SECURE_COOKIE: ${TIMETUNE_SECURE_COOKIES:-false}
         APP_LOCALE: de
         BROADCAST_CONNECTION: reverb
         QUEUE_CONNECTION: database
@@ -37,7 +44,7 @@ services:
             <<: *env
             TIMETUNE_ROLE: web
         ports:
-            - '${TIMETUNE_PORT:-8090}:80'
+            - '${TIMETUNE_BIND:-0.0.0.0}:${TIMETUNE_PORT:-8090}:80'
         depends_on: [reverb]
         healthcheck:
             test:

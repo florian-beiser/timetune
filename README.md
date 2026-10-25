@@ -101,7 +101,74 @@ Aufbau (`compose.yaml`, ein Image für alle Rollen):
 
 Die SQLite-Datenbank und der App-Key liegen im Volume `data`, Logos und Fotos im Volume `uploads`. Sie überstehen Neustarts und Updates.
 
-Die Browser holen sich die WebSocket-Adresse zur Laufzeit vom Server (`REVERB_PUBLIC_*`, leer = gleiche Adresse wie die Seite). Dasselbe Image funktioniert daher unter jeder IP oder Domain. Das Setup ist für Demos gedacht, nicht als gehärtete Produktionsumgebung: kein HTTPS, Demo-Schlüssel für Reverb in `compose.yaml`, Demo-Moderatorschlüssel aus dem Seeder.
+Die Browser holen sich die WebSocket-Adresse zur Laufzeit vom Server (`REVERB_PUBLIC_*`, leer = gleiche Adresse wie die Seite). Dasselbe Image funktioniert daher unter jeder IP oder Domain. HTTPS übernimmt ein vorgeschalteter Reverse-Proxy (nächster Abschnitt). Für den Dauerbetrieb im Internet die Demo-Schlüssel ersetzen: die Reverb-Schlüssel in `compose.yaml` und den Moderatorschlüssel aus dem Seeder (eigenes Spiel im Dashboard anlegen).
+
+## Betrieb hinter einem HTTPS-Reverse-Proxy
+
+Beispiel: TimeTune läuft per Docker Compose auf Port 8090, ein Caddy davor terminiert TLS für `https://timetune.beiser.info`.
+
+```
+Browser ──https/wss──▶ Caddy (TLS) ──http──▶ :8090 TimeTune (web) ──/app/*──▶ reverb:8080
+```
+
+### 1. Caddy
+
+Caddy auf demselben Server:
+
+```
+timetune.beiser.info {
+	reverse_proxy localhost:8090
+}
+```
+
+Caddy setzt `X-Forwarded-For`, `X-Forwarded-Proto` und `X-Forwarded-Host` selbst und leitet WebSocket-Verbindungen (`/app/…`) ohne weitere Konfiguration weiter. Läuft Caddy selbst in Docker, statt `localhost` den Host erreichen (z. B. `host.docker.internal:8090`) oder Caddy ins Compose-Netz von TimeTune hängen.
+
+### 2. TimeTune konfigurieren
+
+```bash
+cp docker/proxy.env.example docker/proxy.env    # Werte prüfen und anpassen
+docker compose --env-file docker/proxy.env up -d --build
+```
+
+| Variable                          | Bedeutung                                                                              | Beispiel                       |
+| --------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------ |
+| `TIMETUNE_APP_URL`                | Öffentliche Adresse (`APP_URL`); gilt für Links, die außerhalb einer Anfrage entstehen | `https://timetune.beiser.info` |
+| `TIMETUNE_TRUSTED_PROXIES`        | Proxys, deren `X-Forwarded-*`-Header gelten (`TRUSTED_PROXIES`)                        | `private`                      |
+| `TIMETUNE_SECURE_COOKIES`         | Cookies nur über HTTPS senden (`SESSION_SECURE_COOKIE`)                                | `true`                         |
+| `TIMETUNE_PORT` / `TIMETUNE_BIND` | Port und Adresse am Host, auf die der Proxy zugreift                                   | `8090` / `127.0.0.1`           |
+
+Ohne `--env-file` gelten die Demo-Werte: kein Proxy, `http://localhost:8090`, normale Cookies. Die Variablen heißen `TIMETUNE_*`, damit Docker Compose nicht versehentlich Werte aus der Laravel-`.env` im Projektordner übernimmt.
+
+**`TRUSTED_PROXIES`** (auch außerhalb von Docker in der `.env` nutzbar):
+
+- leer (Standard): Weitergeleitete Header werden ignoriert. Das ist richtig, solange kein Proxy davor steht.
+- `private`: alle privaten und lokalen Netze (127/8, 10/8, 172.16/12, 192.168/16 usw.). Das passt, wenn Caddy auf demselben Server oder im Docker-Netz läuft, denn TimeTune sieht dann eine private Absenderadresse.
+- IP-Adressen oder Netze, kommagetrennt, z. B. `203.0.113.10, 10.0.0.0/8`: für einen Proxy auf einem anderen Server.
+- `*`: vertraut jedem direkten Gegenüber. Nur verwenden, wenn Port 8090 ausschließlich vom Proxy erreichbar ist, sonst kann jeder Client Host und Protokoll fälschen.
+
+Ausgewertet werden `X-Forwarded-For`, `-Host`, `-Port`, `-Proto`, `-Prefix` und `X-Forwarded-AWS-ELB`. Laravel erkennt damit HTTPS und erzeugt Asset-URLs, Redirects, Links und den QR-Code mit `https://` und der öffentlichen Domain.
+
+**`TIMETUNE_BIND=127.0.0.1`** macht Port 8090 nur auf dem Server selbst erreichbar. Niemand kann dann den Proxy umgehen. Läuft Caddy in einem Container oder auf einem anderen Rechner, `0.0.0.0` setzen und den Port per Firewall auf den Proxy beschränken.
+
+### 3. WebSockets (Reverb)
+
+Nichts zu tun: Die Browser verbinden sich mit derselben Adresse wie die Seite, bei HTTPS also automatisch über `wss://timetune.beiser.info/app/…`. Caddy leitet das an TimeTune weiter, der `web`-Container an Reverb. Intern sprechen Web, Queue und Reverb unverschlüsselt im Docker-Netz miteinander (`REVERB_HOST=reverb`).
+
+### 4. Prüfen
+
+```bash
+curl -s https://timetune.beiser.info/play/K7M2QX | grep -o 'href="[^"]*app-[^"]*\.css"'
+# erwartet: href="https://timetune.beiser.info/build/assets/app-….css"
+```
+
+Im Browser (Entwicklertools → Netzwerk) dürfen keine `http://`-Anfragen und keine „Mixed Content“-Meldungen auftauchen. Die WebSocket-Verbindung muss als `wss://…/app/…` mit Status 101 erscheinen.
+
+| Problem                               | Ursache / Lösung                                                                                                                       |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| CSS/JS mit `http://`, „Mixed Content“ | `TIMETUNE_TRUSTED_PROXIES` leer oder Proxy-Adresse nicht enthalten → `private` oder die IP des Proxys eintragen, Container neu starten |
+| Links mit falscher Domain             | Proxy sendet `X-Forwarded-Host` nicht, oder er ist nicht vertraut; bei Caddy ist das Standard                                          |
+| Login/Formulare: 419 „Page Expired“   | `TIMETUNE_SECURE_COOKIES=true`, aber Zugriff über `http://` → nur über HTTPS aufrufen                                                  |
+| Live-Updates fehlen, alle 3 s Polling | WebSocket wird nicht durchgereicht: andere Proxys brauchen Upgrade-Header für `/app/` (Caddy: automatisch)                             |
 
 ## Ablauf am Konzertabend
 

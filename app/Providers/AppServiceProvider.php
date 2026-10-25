@@ -7,6 +7,7 @@ use App\Models\Player;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\GenericUser;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Telescope\TelescopeServiceProvider;
+use Symfony\Component\HttpFoundation\IpUtils;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,8 +37,50 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureTrustedProxies();
         $this->configureGuards();
         $this->configureRateLimiting();
+    }
+
+    /**
+     * Trusted reverse proxies from TRUSTED_PROXIES (see config/timetune.php).
+     * Set here instead of bootstrap/app.php, because the middleware callback
+     * there runs before .env and the (cached) configuration are loaded.
+     */
+    protected function configureTrustedProxies(): void
+    {
+        $proxies = self::parseTrustedProxies(config('timetune.trusted_proxies'));
+
+        if ($proxies === null) {
+            TrustProxies::flushState();
+
+            return;
+        }
+
+        TrustProxies::at($proxies);
+    }
+
+    /**
+     * @return list<string>|string|null
+     */
+    public static function parseTrustedProxies(mixed $value): array|string|null
+    {
+        $value = is_string($value) ? trim($value) : '';
+
+        if ($value === '') {
+            return null;
+        }
+
+        if ($value === '*' || $value === '**') {
+            return $value;
+        }
+
+        $proxies = [];
+        foreach (array_filter(array_map('trim', explode(',', $value))) as $entry) {
+            array_push($proxies, ...(strtolower($entry) === 'private' ? IpUtils::PRIVATE_SUBNETS : [$entry]));
+        }
+
+        return array_values(array_unique($proxies));
     }
 
     /**
