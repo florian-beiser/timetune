@@ -146,7 +146,7 @@ Ohne `--env-file` gelten die Demo-Werte: kein Proxy, `http://localhost:8090`, no
 - IP-Adressen oder Netze, kommagetrennt, z. B. `203.0.113.10, 10.0.0.0/8`: für einen Proxy auf einem anderen Server.
 - `*`: vertraut jedem direkten Gegenüber. Nur verwenden, wenn Port 8090 ausschließlich vom Proxy erreichbar ist, sonst kann jeder Client Host und Protokoll fälschen.
 
-Ausgewertet werden `X-Forwarded-For`, `-Host`, `-Port`, `-Proto`, `-Prefix` und `X-Forwarded-AWS-ELB`. Laravel erkennt damit HTTPS und erzeugt Asset-URLs, Redirects, Links und den QR-Code mit `https://` und der öffentlichen Domain.
+Ausgewertet werden `X-Forwarded-For`, `-Host`, `-Port`, `-Proto`, `-Prefix` und `X-Forwarded-AWS-ELB`. Zusätzlich gilt: Beginnt `APP_URL` mit `https://`, erzeugt Laravel alle Links und Asset-URLs mit `https`, auch wenn die Proxy-Header nicht vertraut werden. Das ist eine Absicherung gegen Mixed Content; Client-IP und Host kommen trotzdem nur von vertrauten Proxys. Laravel erkennt damit HTTPS und erzeugt Asset-URLs, Redirects, Links und den QR-Code mit `https://` und der öffentlichen Domain.
 
 **`TIMETUNE_BIND=127.0.0.1`** macht Port 8090 nur auf dem Server selbst erreichbar. Niemand kann dann den Proxy umgehen. Läuft Caddy in einem Container oder auf einem anderen Rechner, `0.0.0.0` setzen und den Port per Firewall auf den Proxy beschränken.
 
@@ -163,12 +163,12 @@ curl -s https://timetune.beiser.info/play/K7M2QX | grep -o 'href="[^"]*app-[^"]*
 
 Im Browser (Entwicklertools → Netzwerk) dürfen keine `http://`-Anfragen und keine „Mixed Content“-Meldungen auftauchen. Die WebSocket-Verbindung muss als `wss://…/app/…` mit Status 101 erscheinen.
 
-| Problem                               | Ursache / Lösung                                                                                                                       |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| CSS/JS mit `http://`, „Mixed Content“ | `TIMETUNE_TRUSTED_PROXIES` leer oder Proxy-Adresse nicht enthalten → `private` oder die IP des Proxys eintragen, Container neu starten |
-| Links mit falscher Domain             | Proxy sendet `X-Forwarded-Host` nicht, oder er ist nicht vertraut; bei Caddy ist das Standard                                          |
-| Login/Formulare: 419 „Page Expired“   | `TIMETUNE_SECURE_COOKIES=true`, aber Zugriff über `http://` → nur über HTTPS aufrufen                                                  |
-| Live-Updates fehlen, alle 3 s Polling | WebSocket wird nicht durchgereicht: andere Proxys brauchen Upgrade-Header für `/app/` (Caddy: automatisch)                             |
+| Problem                               | Ursache / Lösung                                                                                                                                                                                                                                                |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CSS/JS mit `http://`, „Mixed Content“ | `TIMETUNE_APP_URL` ist nicht `https://…` und/oder `TIMETUNE_TRUSTED_PROXIES` ist leer → mit `--env-file docker/proxy.env` starten (`docker compose exec web printenv APP_URL TRUSTED_PROXIES` zeigt die aktiven Werte), nach `git pull` mit `--build` neu bauen |
+| Links mit falscher Domain             | Proxy sendet `X-Forwarded-Host` nicht, oder er ist nicht vertraut; bei Caddy ist das Standard                                                                                                                                                                   |
+| Login/Formulare: 419 „Page Expired“   | `TIMETUNE_SECURE_COOKIES=true`, aber Zugriff über `http://` → nur über HTTPS aufrufen                                                                                                                                                                           |
+| Live-Updates fehlen, alle 3 s Polling | WebSocket wird nicht durchgereicht: andere Proxys brauchen Upgrade-Header für `/app/` (Caddy: automatisch)                                                                                                                                                      |
 
 ## Ablauf am Konzertabend
 

@@ -78,3 +78,27 @@ it('parses the TRUSTED_PROXIES setting', function (?string $value, array|string|
     'list' => [' 10.0.0.5 , 192.168.1.0/24 ', ['10.0.0.5', '192.168.1.0/24']],
     'private keyword' => ['private', array_values(IpUtils::PRIVATE_SUBNETS)],
 ]);
+
+it('uses https for links and assets whenever APP_URL is https, even without trusted proxy', function () {
+    config(['app.url' => 'https://www.tk-gantschier.at']);
+    trustProxies(null);
+    $game = exampleGame();
+
+    $location = $this->withServerVariables(['REMOTE_ADDR' => '172.18.0.1'])
+        ->post(route('play.find'), ['code' => $game->code])
+        ->headers->get('Location');
+
+    expect($location)->toStartWith('https://')
+        ->and(asset('build/assets/app.css'))->toStartWith('https://');
+});
+
+it('keeps http links for a local http APP_URL', function () {
+    config(['app.url' => 'http://localhost:8090']);
+    trustProxies(null);
+    $game = exampleGame();
+
+    $this->post(route('play.find'), ['code' => $game->code])
+        ->assertRedirect(url("/play/{$game->code}"));
+
+    expect(url('/'))->toStartWith('http://');
+});

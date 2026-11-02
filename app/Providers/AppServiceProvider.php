@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Telescope\TelescopeServiceProvider;
@@ -49,6 +50,12 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureTrustedProxies(): void
     {
+        // An https APP_URL means the app is only served over TLS: generate
+        // https links and assets even if the proxy headers are not trusted.
+        if (str_starts_with(strtolower((string) config('app.url')), 'https://')) {
+            URL::forceScheme('https');
+        }
+
         $proxies = self::parseTrustedProxies(config('timetune.trusted_proxies'));
 
         if ($proxies === null) {
