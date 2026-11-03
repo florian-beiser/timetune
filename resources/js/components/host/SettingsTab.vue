@@ -95,8 +95,8 @@ function saveTitle() {
                     <span class="flex-1">
                         <span class="block text-sm">Bonusfrage pro Runde</span>
                         <span class="block text-xs text-navy/70">
-                            Multiple Choice „Wer ist der Interpret?“, +1
-                            Bonuspunkt
+                            Multiple Choice „Wer ist der Kapellmeister?“, +1
+                            Bonuspunkt. Entscheidet bei gleich vielen Karten.
                         </span>
                     </span>
                     <input

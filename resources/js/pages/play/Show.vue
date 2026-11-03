@@ -5,6 +5,7 @@ import {
     CircleCheck,
     CircleX,
     Lock,
+    Star,
     Music,
     Plus,
     ShieldCheck,
@@ -450,6 +451,12 @@ function onTiebreakInput(event: Event) {
                         <span class="ml-auto font-semibold">{{
                             row.score
                         }}</span>
+                        <span
+                            v-if="row.bonus"
+                            class="flex items-center gap-1 text-sm text-white/75"
+                        >
+                            <Star class="size-3.5 text-amber" />{{ row.bonus }}
+                        </span>
                     </div>
                 </div>
 
@@ -581,19 +588,42 @@ function onTiebreakInput(event: Event) {
                     <span class="text-xs text-white/75">
                         Deine Karten:
                         <b class="font-semibold text-white">{{ me.score }}</b>
+                        <template v-if="me.bonus_enabled">
+                            · Bonus:
+                            <b class="font-semibold text-white">{{
+                                me.bonus_points
+                            }}</b>
+                        </template>
                     </span>
                 </header>
 
-                <div
-                    v-if="state === 'ROUND_CLOSED'"
-                    class="mx-5 mt-4 flex items-center gap-2.5 rounded-card bg-white/15 px-3.5 py-3 text-sm"
+                <Transition
+                    enter-from-class="opacity-0"
+                    enter-active-class="transition-opacity duration-300"
                 >
-                    <Lock class="size-4" />
-                    <span>
-                        <b class="font-semibold">Abgabe geschlossen.</b>
-                        Gleich wird aufgelöst.
-                    </span>
-                </div>
+                    <div
+                        v-if="state === 'ROUND_CLOSED'"
+                        class="fixed inset-0 z-40 flex flex-col items-center justify-center gap-5 bg-night/90 px-8 text-center backdrop-blur-sm"
+                        role="status"
+                    >
+                        <div
+                            class="flex size-24 items-center justify-center rounded-full bg-white/15"
+                        >
+                            <Lock class="size-11" />
+                        </div>
+                        <div class="text-[32px] leading-tight font-semibold">
+                            Abgabe geschlossen
+                        </div>
+                        <div class="text-base text-white/75">
+                            {{
+                                me.placement === null
+                                    ? 'Du hast diesmal nichts abgegeben.'
+                                    : 'Deine Wahl ist gespeichert.'
+                            }}
+                            Gleich wird aufgelöst …
+                        </div>
+                    </div>
+                </Transition>
 
                 <div class="flex flex-1 flex-col gap-1.5 px-5 pt-4 pb-6">
                     <div
@@ -620,7 +650,7 @@ function onTiebreakInput(event: Event) {
                     >
                         <div class="flex justify-between text-xs">
                             <span class="font-semibold">
-                                Bonusfrage · Wer ist der Interpret?
+                                Bonusfrage · Wer ist der Kapellmeister?
                             </span>
                             <span class="text-white/50">+1 Punkt</span>
                         </div>
@@ -684,7 +714,7 @@ function onTiebreakInput(event: Event) {
                             <button
                                 v-else-if="state === 'ROUND_OPEN'"
                                 type="button"
-                                class="flex h-11 items-center justify-center gap-2 rounded-btn border border-dashed border-white/50 text-sm text-white/75 transition-colors hover:border-royal hover:bg-royal/15 active:bg-royal/25"
+                                class="flex h-11 items-center justify-center gap-2 rounded-btn border border-dashed border-[var(--slot-border,rgb(255_255_255/0.5))] text-sm text-[var(--slot-text,rgb(255_255_255/0.75))] transition-colors hover:border-royal hover:bg-royal/15 active:bg-royal/25"
                                 @click="choose(row.position)"
                             >
                                 <Plus class="size-3" />
@@ -796,12 +826,22 @@ function onTiebreakInput(event: Event) {
                         </div>
                         <div
                             v-if="result.bonus_correct !== null"
-                            class="text-xs text-white/75"
+                            class="mt-1.5 flex items-center gap-1.5 self-start rounded-full py-1 pr-3 pl-1.5 text-sm font-semibold"
+                            :class="
+                                result.bonus_correct
+                                    ? 'bg-white text-success'
+                                    : 'bg-black/25 text-white'
+                            "
                         >
+                            <CircleCheck
+                                v-if="result.bonus_correct"
+                                class="size-5"
+                            />
+                            <CircleX v-else class="size-5" />
                             Bonusfrage:
                             {{
                                 result.bonus_correct
-                                    ? 'richtig, +1 Punkt'
+                                    ? 'richtig, +1 Bonuspunkt'
                                     : 'leider falsch'
                             }}
                         </div>
@@ -840,12 +880,22 @@ function onTiebreakInput(event: Event) {
                 </div>
 
                 <div
-                    class="grid grid-cols-2 gap-3 border-t border-white/15 px-5 pt-4 pb-8"
+                    class="grid gap-3 border-t border-white/15 px-5 pt-4 pb-8"
+                    :class="me.bonus_enabled ? 'grid-cols-3' : 'grid-cols-2'"
                 >
                     <div>
                         <div class="text-xs text-white/50">Deine Karten</div>
                         <div class="text-[26px] font-semibold">
                             {{ me.score }}
+                        </div>
+                    </div>
+                    <div v-if="me.bonus_enabled">
+                        <div class="text-xs text-white/50">Bonuspunkte</div>
+                        <div
+                            class="flex items-center gap-1.5 text-[26px] font-semibold"
+                        >
+                            <Star class="size-5 text-amber" />
+                            {{ me.bonus_points }}
                         </div>
                     </div>
                     <div>
@@ -868,7 +918,21 @@ function onTiebreakInput(event: Event) {
                     <span class="text-sm font-semibold">Tiebreaker</span>
                     <span class="text-xs text-white/75">Bei Gleichstand</span>
                 </header>
+                <div
+                    v-if="!me.tiebreak_eligible"
+                    class="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center"
+                >
+                    <div class="text-xl font-semibold">
+                        Gleichstand auf dem Podium
+                    </div>
+                    <div class="text-sm text-pretty text-white/50">
+                        Der Tiebreaker entscheidet nur zwischen den Spielern mit
+                        gleich vielen Karten und Bonuspunkten. Gleich gibt es
+                        das Ergebnis.
+                    </div>
+                </div>
                 <form
+                    v-else
                     class="flex flex-1 flex-col gap-6 px-6 py-10"
                     @submit.prevent="submitTiebreak"
                 >
@@ -1016,6 +1080,12 @@ function onTiebreakInput(event: Event) {
                     <span class="text-xs text-white/75">
                         Deine Karten:
                         <b class="font-semibold text-white">{{ me.score }}</b>
+                        <template v-if="me.bonus_enabled">
+                            · Bonus:
+                            <b class="font-semibold text-white">{{
+                                me.bonus_points
+                            }}</b>
+                        </template>
                     </span>
                 </header>
                 <div

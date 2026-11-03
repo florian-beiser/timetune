@@ -65,10 +65,15 @@ class GameActionController extends Controller
             'options.bonus_question' => ['sometimes', 'boolean'],
             'options.countdown_seconds' => ['sometimes', 'nullable', 'integer', 'min:10', 'max:600'],
             'options.title' => ['sometimes', 'nullable', 'string', 'max:'.Game::MAX_TITLE_LENGTH],
-            'options.theme' => ['sometimes', 'nullable', 'array:accent,background'],
+            'options.theme' => ['sometimes', 'nullable', 'array:accent,background,slot_text,slot_border'],
             'options.theme.accent' => ['required_with:options.theme', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'options.theme.background' => ['required_with:options.theme', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'options.theme.slot_text' => ['sometimes', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'options.theme.slot_border' => ['sometimes', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'options.bonus_artists' => ['sometimes', 'array', 'max:100'],
+            'options.bonus_artists.*' => ['nullable', 'string', 'max:255'],
         ], [
+            'options.bonus_artists.max' => 'Höchstens :max weitere Kapellmeister.',
             'options.theme.*.regex' => 'Bitte eine Farbe im Format #RRGGBB angeben.',
             'options.title.max' => 'Der Titel darf höchstens :max Zeichen lang sein.',
         ]);
@@ -76,6 +81,15 @@ class GameActionController extends Controller
         if (array_key_exists('title', $validated['options'] ?? [])) {
             $title = trim((string) $validated['options']['title']);
             $validated['options']['title'] = $title === '' ? null : $title;
+        }
+
+        if (array_key_exists('bonus_artists', $validated['options'] ?? [])) {
+            $validated['options']['bonus_artists'] = $request->collect('options.bonus_artists')
+                ->map(fn (mixed $name): string => is_string($name) ? trim($name) : '')
+                ->filter()
+                ->unique(fn (string $name) => mb_strtolower($name))
+                ->values()
+                ->all();
         }
 
         if (array_key_exists('join_url', $validated['options'] ?? [])) {

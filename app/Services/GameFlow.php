@@ -370,28 +370,34 @@ class GameFlow
     }
 
     /**
-     * Four artists for the multiple-choice bonus question: the correct one plus
-     * three other artists of this game. Without enough artists there is no question.
+     * Up to four conductors for the multiple-choice bonus question: the correct
+     * one plus others from the round songs and the extra list of the game. Names
+     * are compared case-insensitively, so the correct one appears only once.
+     * Without any other conductor there is no question.
      *
      * @return array{0: list<string>|null, 1: int|null}
      */
     private function bonusOptions(Game $game, Song $song): array
     {
-        $others = $game->songs()
-            ->where('artist', '!=', $song->artist)
-            ->get(['artist'])
-            ->map(fn (Song $other) => $other->artist)
-            ->unique()
+        $key = fn (string $name): string => mb_strtolower(trim($name));
+        $correct = trim($song->artist);
+
+        $others = $game->roundSongs()
+            ->pluck('artist')
+            ->merge($game->bonusArtists())
+            ->map(fn (string $name) => trim($name))
+            ->filter(fn (string $name) => $name !== '' && $key($name) !== $key($correct))
+            ->unique($key)
             ->shuffle()
             ->take(3);
 
-        if ($others->count() < 3) {
+        if ($others->isEmpty()) {
             return [null, null];
         }
 
-        $options = array_values($others->push($song->artist)->shuffle()->all());
+        $options = array_values(collect([$correct, ...$others->all()])->shuffle()->all());
 
-        return [$options, (int) array_search($song->artist, $options, true)];
+        return [$options, (int) array_search($correct, $options, true)];
     }
 
     private function requireCurrentRound(Game $game): Round

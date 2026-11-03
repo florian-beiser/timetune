@@ -28,6 +28,7 @@ it('breaks ties by the smallest deviation and then by the earlier submission', f
 it('accepts only one four-digit tiebreak answer during the tiebreaker', function () {
     $game = exampleGame();
     $anna = joinGame($game, 'Anna', 'Africa');
+    joinGame($game, 'Ben', 'Africa');
 
     asPlayer($anna)->postJson(route('api.games.tiebreak', $game), ['guessed_year' => 1986])->assertConflict();
 

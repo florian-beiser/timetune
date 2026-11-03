@@ -44,6 +44,7 @@ class GameView
             'submitted' => $round && $round->skipped_at === null ? $round->placements()->count() : 0,
             'reveal' => $game->state === GameState::Revealed ? $this->flow->revealSummary($round) : null,
             'top10' => $top,
+            'tiebreak_players' => $game->state === GameState::Tiebreaker ? $this->tiebreakNames($standings) : [],
             'podium' => $isFinished ? array_slice($top, 0, 3) : [],
         ];
     }
@@ -69,12 +70,14 @@ class GameView
                 'bonus_question' => $game->bonusQuestionEnabled(),
                 'countdown_seconds' => $game->countdownSeconds(),
                 'join_url' => $game->options['join_url'] ?? null,
+                'bonus_artists' => $game->bonusArtists(),
             ],
             'default_join_url' => $this->joinUrl->default($game),
             'next_state' => $game->state === GameState::Finished ? null : $this->flow->naturalNextState($game)->value,
             'has_next_round' => $this->flow->hasNextRound($game),
             'has_tiebreaker_song' => $game->tiebreakerSong() !== null,
             'tie_in_top_three' => $standings->hasTieInTopThree(),
+            'tiebreak_players' => $this->tiebreakNames($standings),
             'current_song' => $round ? $this->songRow($round->song) : null,
             'round_opened_at' => $round?->opened_at?->toIso8601String(),
             'songs' => [
@@ -104,7 +107,7 @@ class GameView
     /**
      * All players with their activity, newest first.
      *
-     * @return list<array{id: int, name: string, is_hidden: bool, score: int, submissions: int, joined_at: string, last_seen_at: string|null}>
+     * @return list<array{id: int, name: string, is_hidden: bool, score: int, bonus: int, submissions: int, joined_at: string, last_seen_at: string|null}>
      */
     private function players(Game $game, Standings $standings): array
     {
@@ -121,10 +124,21 @@ class GameView
                 'name' => $player->name,
                 'is_hidden' => $player->is_hidden,
                 'score' => $standings->score($player->id),
+                'bonus' => $standings->bonusPoints($player->id),
                 'submissions' => (int) ($submissions[$player->id] ?? 0),
                 'joined_at' => $player->joined_at->toIso8601String(),
                 'last_seen_at' => $player->last_seen_at?->toIso8601String(),
             ])->all());
+    }
+
+    /**
+     * Names of the players tied on the podium, as shown on the screen.
+     *
+     * @return list<string>
+     */
+    private function tiebreakNames(Standings $standings): array
+    {
+        return array_map(fn (int $playerId) => $standings->row($playerId)['name'], $standings->tiebreakCandidates());
     }
 
     /**

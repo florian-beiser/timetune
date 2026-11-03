@@ -320,6 +320,7 @@ function copyHostLink() {
                 v-else-if="tab === 'songs'"
                 :game-id="game.id"
                 :songs="songs"
+                :bonus-artists="options.bonus_artists"
                 :editable="isLobby"
                 :busy="busy"
                 :run="run"

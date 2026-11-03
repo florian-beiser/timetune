@@ -210,6 +210,7 @@ function confirmRemoval() {
                             Abgaben
                         </th>
                         <th class="px-3 py-2 text-right font-normal">Karten</th>
+                        <th class="px-3 py-2 text-right font-normal">Bonus</th>
                         <th class="px-3 py-2" />
                     </tr>
                 </thead>
@@ -302,6 +303,9 @@ function confirmRemoval() {
                         <td class="px-3 py-1.5 text-right font-semibold">
                             {{ player.score }}
                         </td>
+                        <td class="px-3 py-1.5 text-right text-navy/70">
+                            {{ player.bonus }}
+                        </td>
                         <td class="px-3 py-1.5">
                             <span class="flex justify-end gap-3">
                                 <button
@@ -332,7 +336,7 @@ function confirmRemoval() {
                         </td>
                     </tr>
                     <tr v-if="!visible.length">
-                        <td colspan="6" class="px-3 py-4 text-navy/70">
+                        <td colspan="7" class="px-3 py-4 text-navy/70">
                             {{
                                 players.length
                                     ? 'Keine Spieler für diesen Filter.'

@@ -209,7 +209,7 @@ Der große Button sendet den Zustand mit, den der Moderator gesehen hat (`from`)
 ### CSV-Import
 
 ```
-titel;interpret;jahr;rolle
+titel;kapellmeister;jahr;rolle
 Wonderwall;Oasis;1995;runde
 Africa;Toto;1982;start
 The Final Countdown;Europe;1986;tiebreaker

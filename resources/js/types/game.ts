@@ -16,7 +16,13 @@ export type Card = {
     image: SongImage | null;
 };
 
-export type Theme = { accent: string; background: string };
+export type Theme = {
+    accent: string;
+    background: string;
+    /** Text and border of the „hier einfügen“ gaps; missing in older themes. */
+    slot_text?: string;
+    slot_border?: string;
+};
 
 export type Branding = {
     title: string;
@@ -67,10 +73,12 @@ export type Me = {
     bonus_choice: number | null;
     score: number;
     bonus_points: number;
+    bonus_enabled: boolean;
     rank: number;
     total_players: number;
     joined_round: number | null;
     result: RoundResult | null;
+    tiebreak_eligible: boolean;
     tiebreak_year: number | null;
     tiebreak_deviation: number | null;
 };
@@ -105,6 +113,7 @@ export type ScreenProps = {
     submitted: number;
     reveal: RevealSummary | null;
     top10: LeaderboardRow[];
+    tiebreak_players: string[];
     podium: LeaderboardRow[];
 };
 
@@ -121,6 +130,7 @@ export type HostProps = ScreenProps & {
         bonus_question: boolean;
         countdown_seconds: number | null;
         join_url: string | null;
+        bonus_artists: string[];
     };
     default_join_url: string;
     next_state: GameStateName | null;
@@ -140,6 +150,7 @@ export type HostPlayer = {
     name: string;
     is_hidden: boolean;
     score: number;
+    bonus: number;
     submissions: number;
     joined_at: string;
     last_seen_at: string | null;

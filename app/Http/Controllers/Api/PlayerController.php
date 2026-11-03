@@ -11,6 +11,7 @@ use App\Models\Round;
 use App\Services\GameFlow;
 use App\Services\PlayerRegistrar;
 use App\Services\PlayerView;
+use App\Services\Standings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -149,6 +150,10 @@ class PlayerController extends Controller
         ], [
             'guessed_year.digits' => 'Bitte gib ein vierstelliges Jahr ein.',
         ]);
+
+        if (! in_array($player->id, (new Standings($game))->tiebreakCandidates(), true)) {
+            throw new GameFlowException('Der Tiebreaker entscheidet nur zwischen Spielern mit Gleichstand auf dem Podium.');
+        }
 
         if ($player->tiebreak()->exists()) {
             throw new GameFlowException('Du hast bereits abgegeben.');

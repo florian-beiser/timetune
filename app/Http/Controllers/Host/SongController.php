@@ -77,7 +77,7 @@ class SongController extends Controller
     }
 
     /**
-     * CSV import with the columns `titel;interpret;jahr;rolle`. A header row
+     * CSV import with the columns `titel;kapellmeister;jahr;rolle`. A header row
      * is skipped; comma-separated files are accepted as well.
      */
     public function import(Request $request, Game $game, ImageStore $images): JsonResponse
@@ -147,7 +147,7 @@ class SongController extends Controller
 
         if ($errors !== []) {
             throw ValidationException::withMessages([
-                'file' => 'Ungültige Zeilen (erwartet: titel;interpret;jahr;rolle) – '.implode(' | ', array_slice($errors, 0, 5)),
+                'file' => 'Ungültige Zeilen (erwartet: titel;kapellmeister;jahr;rolle) – '.implode(' | ', array_slice($errors, 0, 5)),
             ]);
         }
 

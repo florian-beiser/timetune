@@ -44,7 +44,7 @@ class Standings
     /**
      * Sort keys used for ranking, cached per mode.
      *
-     * @var array<string, array<int, array{0: int, 1: int, 2: string}>>
+     * @var array<string, array<int, array{0: int, 1: int, 2: int, 3: string}>>
      */
     private array $rankKeys = [];
 
@@ -144,9 +144,9 @@ class Standings
     }
 
     /**
-     * Competition rank (1, 2, 2, 4 ...). During the game only the score
-     * counts; with $final the tiebreak deviation and then the earlier
-     * submission decide between equal scores.
+     * Competition rank (1, 2, 2, 4 ...). Cards count first, then bonus
+     * points; with $final the tiebreak deviation and then the earlier
+     * submission decide between players who are still equal.
      */
     public function rank(int $playerId, bool $final = false): int
     {
@@ -211,26 +211,41 @@ class Standings
     }
 
     /**
-     * Whether players with equal scores share a place among the top three.
+     * Players who share a place among the top three with someone else, i.e.
+     * have the same cards and bonus points. Only they take part in the tiebreaker.
+     *
+     * @return list<int>
      */
-    public function hasTieInTopThree(): bool
+    public function tiebreakCandidates(): array
     {
-        $scores = array_column($this->top(PHP_INT_MAX), 'score', 'player_id');
-        $podiumScores = array_slice(array_values($scores), 0, 3);
+        $keys = $this->rankKeys(false);
+        $sorted = array_values($keys);
+        sort($sorted);
+        // Rank <= 3 means at most two players are strictly better.
+        $podiumLimit = $sorted[2] ?? end($sorted);
+        $groups = [];
 
-        foreach (array_unique($podiumScores) as $score) {
-            if (count(array_keys($scores, $score, true)) > 1) {
-                return true;
+        foreach ($keys as $playerId => $key) {
+            if ($key <= $podiumLimit) {
+                $groups[$key[0].':'.$key[1]][] = $playerId;
             }
         }
 
-        return false;
+        $candidates = array_merge(...array_values(array_filter($groups, fn (array $ids) => count($ids) > 1)));
+        sort($candidates);
+
+        return $candidates;
+    }
+
+    public function hasTieInTopThree(): bool
+    {
+        return $this->tiebreakCandidates() !== [];
     }
 
     /**
      * Sort keys: lower is better. Equal keys share a rank.
      *
-     * @return array<int, array{0: int, 1: int, 2: string}>
+     * @return array<int, array{0: int, 1: int, 2: int, 3: string}>
      */
     private function rankKeys(bool $final): array
     {
@@ -241,6 +256,7 @@ class Standings
             foreach ($this->players as $player) {
                 $keys[$player->id] = [
                     -$this->score($player->id),
+                    -$this->bonusPoints($player->id),
                     $final ? ($this->tiebreakDeviation($player->id) ?? PHP_INT_MAX) : 0,
                     $final ? ($this->tiebreaks[$player->id]['submitted_at'] ?? '9999') : '',
                 ];

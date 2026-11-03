@@ -101,3 +101,14 @@ it('limits the title length', function () {
         ->assertUnprocessable()
         ->assertJsonValidationErrors('options.title');
 });
+
+it('saves the colours of the insert gaps', function () {
+    $game = exampleGame();
+    $theme = ['accent' => '#c8102e', 'background' => '#1a1a1a', 'slot_text' => '#ffcc00', 'slot_border' => '#ffcc00'];
+
+    $this->patchJson(route('api.host.update', $game), ['options' => ['theme' => $theme]], hostHeaders($game))->assertOk();
+    expect($game->refresh()->theme())->toBe($theme);
+
+    $this->patchJson(route('api.host.update', $game), ['options' => ['theme' => [...$theme, 'slot_text' => 'gelb']]], hostHeaders($game))
+        ->assertUnprocessable();
+});

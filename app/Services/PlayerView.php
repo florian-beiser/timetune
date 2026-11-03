@@ -40,10 +40,12 @@ class PlayerView
             'bonus_choice' => $bonusAnswer?->choice,
             'score' => $standings->score($player->id),
             'bonus_points' => $standings->bonusPoints($player->id),
+            'bonus_enabled' => $game->bonusQuestionEnabled(),
             'rank' => $standings->rank($player->id, final: $isFinished),
             'total_players' => $standings->playerCount(),
             'joined_round' => $this->joinedRound($player, $round),
             'result' => $showResult ? $this->result($player, $round, $standings, $placement, $bonusAnswer) : null,
+            'tiebreak_eligible' => $game->state === GameState::Tiebreaker && in_array($player->id, $standings->tiebreakCandidates(), true),
             'tiebreak_year' => $player->tiebreak?->guessed_year,
             'tiebreak_deviation' => $isFinished ? $standings->tiebreakDeviation($player->id) : null,
         ];

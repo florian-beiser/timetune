@@ -4,6 +4,7 @@ import {
     GripVertical,
     ImagePlus,
     Lock,
+    Plus,
     Trash2,
     X,
 } from '@lucide/vue';
@@ -12,6 +13,7 @@ import {
     destroySongImage,
     storeSongImage,
 } from '@/actions/App/Http/Controllers/Host/BrandingController';
+import { update } from '@/actions/App/Http/Controllers/Host/GameActionController';
 import {
     destroy,
     importMethod,
@@ -25,16 +27,19 @@ import type { HostProps, SongRow } from '@/types/game';
 const props = defineProps<{
     gameId: number;
     songs: HostProps['songs'];
+    /** Extra conductors offered as wrong answers in the bonus question. */
+    bonusArtists: string[];
     /** Songs can only be changed in the lobby; photos always. */
     editable: boolean;
     busy: boolean;
     run: (action: () => Promise<unknown>) => Promise<void>;
 }>();
 
-type List = 'round' | 'start_pool' | 'tiebreaker';
+type SongList = 'round' | 'start_pool' | 'tiebreaker';
+type List = SongList | 'artists';
 const list = ref<List>('round');
 const lists: {
-    value: List;
+    value: SongList;
     label: string;
     role: SongRow['role'];
     hint: string;
@@ -58,14 +63,45 @@ const lists: {
         hint: 'Ein Song für die Schätzfrage bei Gleichstand. Es zählt der erste.',
     },
 ];
-const current = computed(() => lists.find((l) => l.value === list.value)!);
+const current = computed(
+    () => lists.find((l) => l.value === list.value) ?? lists[0],
+);
 
 const ordered = ref<SongRow[]>([]);
 watch(
-    () => props.songs[list.value],
+    () => props.songs[current.value.value],
     (songs) => (ordered.value = [...songs]),
     { immediate: true },
 );
+
+// --- Extra conductors for the bonus question --------------------------------
+
+const newArtist = ref('');
+const roundArtists = computed(() => [
+    ...new Map(
+        props.songs.round.map((song) => [
+            song.artist.trim().toLowerCase(),
+            song.artist.trim(),
+        ]),
+    ).values(),
+]);
+
+function saveArtists(artists: string[]) {
+    return props.run(() =>
+        api(update(props.gameId), { options: { bonus_artists: artists } }),
+    );
+}
+
+async function addArtist() {
+    const name = newArtist.value.trim();
+
+    if (name === '') {
+        return;
+    }
+
+    await saveArtists([...props.bonusArtists, name]);
+    newArtist.value = '';
+}
 
 const newSong = ref({ title: '', artist: '', year: '' });
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -175,8 +211,20 @@ function onDrop() {
             >
                 {{ l.label }} ({{ songs[l.value].length }})
             </button>
+            <button
+                type="button"
+                class="-mb-px border-b-2 py-2.5 text-sm"
+                :class="
+                    list === 'artists'
+                        ? 'border-royal font-semibold text-royal'
+                        : 'border-transparent text-navy/70'
+                "
+                @click="list = 'artists'"
+            >
+                Weitere Kapellmeister ({{ bonusArtists.length }})
+            </button>
             <label
-                v-if="editable"
+                v-if="editable && list !== 'artists'"
                 class="ml-auto flex cursor-pointer items-center gap-1.5 rounded-btn border border-navy/15 px-3 py-1.5 text-xs font-semibold hover:bg-navy/5"
             >
                 <FileSpreadsheet class="size-4" />
@@ -190,134 +238,191 @@ function onDrop() {
                 />
             </label>
         </div>
-        <div class="flex flex-wrap items-start justify-between gap-2">
-            <p class="text-xs text-navy/70">{{ current.hint }}</p>
-            <label
-                v-if="editable"
-                class="flex items-center gap-2 text-xs text-navy/70"
-            >
-                <input v-model="replaceOnImport" type="checkbox" />
-                Beim Import bestehende Songs ersetzen
-            </label>
-        </div>
-
         <div
-            class="flex flex-col overflow-hidden rounded-card border border-navy/15"
+            v-if="list === 'artists'"
+            class="flex flex-col gap-4 rounded-card border border-navy/15 p-4"
         >
-            <div
-                class="grid grid-cols-[32px_32px_44px_minmax(0,1fr)_minmax(0,1fr)_64px_32px] gap-2 bg-navy/70 px-3 py-2 text-xs text-white"
-            >
-                <span /><span>#</span><span>Foto</span><span>Titel</span>
-                <span>Interpret</span><span>Jahr</span><span />
-            </div>
-            <div
-                v-for="(song, index) in ordered"
-                :key="song.id"
-                :draggable="canDrag"
-                class="grid h-11 grid-cols-[32px_32px_44px_minmax(0,1fr)_minmax(0,1fr)_64px_32px] items-center gap-2 border-t border-navy/15 px-3 text-sm"
-                :class="[
-                    index % 2 ? 'bg-royal/5' : 'bg-white',
-                    dragIndex === index ? 'opacity-50' : '',
-                ]"
-                @dragstart="dragIndex = index"
-                @dragover.prevent="canDrag && onDragOver(index)"
-                @drop.prevent="canDrag && onDrop()"
-                @dragend="dragIndex = null"
-            >
-                <GripVertical
-                    class="size-4"
-                    :class="
-                        canDrag
-                            ? 'cursor-grab text-navy/40'
-                            : 'text-transparent'
-                    "
-                />
-                <span class="text-navy/70">{{ index + 1 }}</span>
-                <span class="group relative size-9">
-                    <label
-                        class="flex size-9 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-navy/15 bg-white text-navy/40 hover:border-royal hover:text-royal"
-                        :title="
-                            song.image ? 'Foto ersetzen' : 'Foto hinzufügen'
-                        "
-                    >
-                        <img
-                            v-if="song.image"
-                            :src="song.image.sm"
-                            alt=""
-                            class="size-full object-cover"
-                        />
-                        <ImagePlus v-else class="size-4" />
-                        <input
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            class="hidden"
-                            @change="uploadImage(song, $event)"
-                        />
-                    </label>
+            <p class="text-xs text-navy/70">
+                Die Bonusfrage bietet den richtigen Kapellmeister und bis zu
+                drei falsche Antworten an. Die falschen kommen aus den
+                Runden-Songs und aus dieser Liste. Jeder Name erscheint nur
+                einmal. Änderungen gelten ab dem nächsten Stück.
+            </p>
+            <div class="flex flex-wrap gap-2">
+                <span
+                    v-for="artist in bonusArtists"
+                    :key="artist"
+                    class="flex h-8 items-center gap-1.5 rounded-full border border-navy/15 bg-white pr-1.5 pl-3 text-sm"
+                >
+                    {{ artist }}
                     <button
-                        v-if="song.image"
                         type="button"
-                        class="absolute -top-1.5 -right-1.5 hidden size-4 items-center justify-center rounded-full bg-alert text-white group-hover:flex"
-                        title="Foto entfernen"
+                        class="flex size-5 items-center justify-center rounded-full text-navy/40 hover:bg-alert/10 hover:text-alert"
+                        :aria-label="`${artist} entfernen`"
+                        :disabled="busy"
                         @click="
-                            run(() => api(destroySongImage([gameId, song.id])))
+                            saveArtists(
+                                bonusArtists.filter((a) => a !== artist),
+                            )
                         "
                     >
-                        <X class="size-3" />
+                        <X class="size-3.5" />
                     </button>
                 </span>
-                <span class="truncate">{{ song.title }}</span>
-                <span class="truncate text-navy/70">{{ song.artist }}</span>
-                <span class="font-semibold">{{ song.year }}</span>
-                <button
-                    v-if="editable"
-                    type="button"
-                    class="text-navy/40 hover:text-alert"
-                    :aria-label="`${song.title} löschen`"
-                    @click="run(() => api(destroy([gameId, song.id])))"
-                >
-                    <Trash2 class="size-4" />
-                </button>
-                <span v-else />
+                <span v-if="!bonusArtists.length" class="text-sm text-navy/70">
+                    Noch keine weiteren Kapellmeister.
+                </span>
             </div>
-            <div
-                v-if="!ordered.length"
-                class="border-t border-navy/15 px-3 py-4 text-sm text-navy/70"
-            >
-                Noch keine Songs in dieser Liste.
-            </div>
-            <form
-                v-if="editable"
-                class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_80px_auto] gap-2 border-t border-navy/15 bg-navy/5 p-2"
-                @submit.prevent="addSong"
-            >
+            <form class="flex gap-2" @submit.prevent="addArtist">
                 <input
-                    v-model="newSong.title"
+                    v-model="newArtist"
                     required
-                    placeholder="Titel"
-                    class="h-9 rounded-btn border border-navy/15 bg-white px-2 text-sm"
-                />
-                <input
-                    v-model="newSong.artist"
-                    required
-                    placeholder="Interpret"
-                    class="h-9 rounded-btn border border-navy/15 bg-white px-2 text-sm"
-                />
-                <input
-                    v-model="newSong.year"
-                    required
-                    inputmode="numeric"
-                    placeholder="Jahr"
-                    class="h-9 rounded-btn border border-navy/15 bg-white px-2 text-sm"
+                    maxlength="255"
+                    placeholder="Name des Kapellmeisters"
+                    class="h-9 flex-1 rounded-btn border border-navy/15 bg-white px-2 text-sm"
                 />
                 <Button type="submit" size="sm" :disabled="busy">
-                    Hinzufügen
+                    <Plus />Hinzufügen
                 </Button>
             </form>
+            <div class="text-xs text-navy/70">
+                Aus den Runden-Songs:
+                {{ roundArtists.length ? roundArtists.join(', ') : '–' }}
+            </div>
         </div>
-        <p class="text-xs text-navy/70">
-            CSV-Format: titel;interpret;jahr;rolle (rolle: runde, start,
-            tiebreaker) · Maßgeblich ist das Original-Erscheinungsjahr.
-        </p>
+
+        <template v-else>
+            <div class="flex flex-wrap items-start justify-between gap-2">
+                <p class="text-xs text-navy/70">{{ current.hint }}</p>
+                <label
+                    v-if="editable"
+                    class="flex items-center gap-2 text-xs text-navy/70"
+                >
+                    <input v-model="replaceOnImport" type="checkbox" />
+                    Beim Import bestehende Songs ersetzen
+                </label>
+            </div>
+
+            <div
+                class="flex flex-col overflow-hidden rounded-card border border-navy/15"
+            >
+                <div
+                    class="grid grid-cols-[32px_32px_44px_minmax(0,1fr)_minmax(0,1fr)_64px_32px] gap-2 bg-navy/70 px-3 py-2 text-xs text-white"
+                >
+                    <span /><span>#</span><span>Foto</span><span>Titel</span>
+                    <span>Kapellmeister</span><span>Jahr</span><span />
+                </div>
+                <div
+                    v-for="(song, index) in ordered"
+                    :key="song.id"
+                    :draggable="canDrag"
+                    class="grid h-11 grid-cols-[32px_32px_44px_minmax(0,1fr)_minmax(0,1fr)_64px_32px] items-center gap-2 border-t border-navy/15 px-3 text-sm"
+                    :class="[
+                        index % 2 ? 'bg-royal/5' : 'bg-white',
+                        dragIndex === index ? 'opacity-50' : '',
+                    ]"
+                    @dragstart="dragIndex = index"
+                    @dragover.prevent="canDrag && onDragOver(index)"
+                    @drop.prevent="canDrag && onDrop()"
+                    @dragend="dragIndex = null"
+                >
+                    <GripVertical
+                        class="size-4"
+                        :class="
+                            canDrag
+                                ? 'cursor-grab text-navy/40'
+                                : 'text-transparent'
+                        "
+                    />
+                    <span class="text-navy/70">{{ index + 1 }}</span>
+                    <span class="group relative size-9">
+                        <label
+                            class="flex size-9 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-navy/15 bg-white text-navy/40 hover:border-royal hover:text-royal"
+                            :title="
+                                song.image ? 'Foto ersetzen' : 'Foto hinzufügen'
+                            "
+                        >
+                            <img
+                                v-if="song.image"
+                                :src="song.image.sm"
+                                alt=""
+                                class="size-full object-cover"
+                            />
+                            <ImagePlus v-else class="size-4" />
+                            <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                class="hidden"
+                                @change="uploadImage(song, $event)"
+                            />
+                        </label>
+                        <button
+                            v-if="song.image"
+                            type="button"
+                            class="absolute -top-1.5 -right-1.5 hidden size-4 items-center justify-center rounded-full bg-alert text-white group-hover:flex"
+                            title="Foto entfernen"
+                            @click="
+                                run(() =>
+                                    api(destroySongImage([gameId, song.id])),
+                                )
+                            "
+                        >
+                            <X class="size-3" />
+                        </button>
+                    </span>
+                    <span class="truncate">{{ song.title }}</span>
+                    <span class="truncate text-navy/70">{{ song.artist }}</span>
+                    <span class="font-semibold">{{ song.year }}</span>
+                    <button
+                        v-if="editable"
+                        type="button"
+                        class="text-navy/40 hover:text-alert"
+                        :aria-label="`${song.title} löschen`"
+                        @click="run(() => api(destroy([gameId, song.id])))"
+                    >
+                        <Trash2 class="size-4" />
+                    </button>
+                    <span v-else />
+                </div>
+                <div
+                    v-if="!ordered.length"
+                    class="border-t border-navy/15 px-3 py-4 text-sm text-navy/70"
+                >
+                    Noch keine Songs in dieser Liste.
+                </div>
+                <form
+                    v-if="editable"
+                    class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_80px_auto] gap-2 border-t border-navy/15 bg-navy/5 p-2"
+                    @submit.prevent="addSong"
+                >
+                    <input
+                        v-model="newSong.title"
+                        required
+                        placeholder="Titel"
+                        class="h-9 rounded-btn border border-navy/15 bg-white px-2 text-sm"
+                    />
+                    <input
+                        v-model="newSong.artist"
+                        required
+                        placeholder="Kapellmeister"
+                        class="h-9 rounded-btn border border-navy/15 bg-white px-2 text-sm"
+                    />
+                    <input
+                        v-model="newSong.year"
+                        required
+                        inputmode="numeric"
+                        placeholder="Jahr"
+                        class="h-9 rounded-btn border border-navy/15 bg-white px-2 text-sm"
+                    />
+                    <Button type="submit" size="sm" :disabled="busy">
+                        Hinzufügen
+                    </Button>
+                </form>
+            </div>
+            <p class="text-xs text-navy/70">
+                CSV-Format: titel;kapellmeister;jahr;rolle (rolle: runde, start,
+                tiebreaker) · Maßgeblich ist das Original-Erscheinungsjahr.
+            </p>
+        </template>
     </div>
 </template>

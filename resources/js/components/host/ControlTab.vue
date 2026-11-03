@@ -342,11 +342,15 @@ function statusText(song: SongRow): string {
             >
                 <div class="text-sm text-navy/70">
                     Das war das letzte Stück.
-                    {{
-                        host.tie_in_top_three
-                            ? 'Auf dem Podium gibt es einen Gleichstand – Tiebreaker empfohlen.'
-                            : 'Kein Gleichstand auf dem Podium.'
-                    }}
+                    <template v-if="host.tie_in_top_three">
+                        Gleichstand auf dem Podium (Karten und Bonuspunkte)
+                        zwischen
+                        <b class="font-semibold text-navy">{{
+                            host.tiebreak_players.join(', ')
+                        }}</b>
+                        – Tiebreaker empfohlen. Nur diese Spieler schätzen mit.
+                    </template>
+                    <template v-else>Kein Gleichstand auf dem Podium.</template>
                 </div>
                 <div class="grid gap-3 sm:grid-cols-2">
                     <button
@@ -451,6 +455,12 @@ function statusText(song: SongRow): string {
                     <span class="w-6 text-navy/70">{{ row.rank }}</span>
                     <span class="truncate">{{ row.name }}</span>
                     <span class="ml-auto font-semibold">{{ row.score }}</span>
+                    <span
+                        class="w-10 text-right text-navy/70"
+                        title="Bonuspunkte"
+                    >
+                        +{{ row.bonus }}
+                    </span>
                     <button
                         type="button"
                         class="text-navy/40 hover:text-navy"

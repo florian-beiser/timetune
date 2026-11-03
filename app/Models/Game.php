@@ -21,7 +21,7 @@ use Illuminate\Support\Str;
  * @property string $admin_key
  * @property GameState $state
  * @property int $current_round
- * @property array{bonus_question?: bool, countdown_seconds?: int|null, theme?: array{accent: string, background: string}|null, join_url?: string|null, title?: string|null}|null $options
+ * @property array{bonus_question?: bool, countdown_seconds?: int|null, theme?: array{accent: string, background: string, slot_text?: string, slot_border?: string}|null, bonus_artists?: list<string>, join_url?: string|null, title?: string|null}|null $options
  * @property string|null $logo
  * @property Carbon|null $finished_at
  * @property Carbon|null $created_at
@@ -124,6 +124,16 @@ class Game extends Model
         return (bool) ($this->options['bonus_question'] ?? false);
     }
 
+    /**
+     * Additional conductors offered as wrong answers in the bonus question.
+     *
+     * @return list<string>
+     */
+    public function bonusArtists(): array
+    {
+        return $this->options['bonus_artists'] ?? [];
+    }
+
     public function countdownSeconds(): ?int
     {
         $seconds = $this->options['countdown_seconds'] ?? null;
@@ -144,7 +154,7 @@ class Game extends Model
     /**
      * Custom colours of the player and screen views; null means the default design.
      *
-     * @return array{accent: string, background: string}|null
+     * @return array{accent: string, background: string, slot_text?: string, slot_border?: string}|null
      */
     public function theme(): ?array
     {
@@ -159,7 +169,7 @@ class Game extends Model
     /**
      * Logo and colours as sent to players, the screen and the moderator.
      *
-     * @return array{title: string, logo_url: string|null, theme: array{accent: string, background: string}|null}
+     * @return array{title: string, logo_url: string|null, theme: array{accent: string, background: string, slot_text?: string, slot_border?: string}|null}
      */
     public function branding(): array
     {

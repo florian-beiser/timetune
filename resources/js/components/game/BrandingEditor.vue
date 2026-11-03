@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ImageUp, RotateCcw, TriangleAlert } from '@lucide/vue';
+import { ImageUp, Plus, RotateCcw, TriangleAlert } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import {
     destroyLogo,
@@ -22,7 +22,25 @@ const props = defineProps<{
 
 const emit = defineEmits<{ changed: [] }>();
 
-const draft = ref<Theme>({ ...(props.branding.theme ?? DEFAULT_THEME) });
+const keys = ['accent', 'background', 'slot_text', 'slot_border'] as const;
+
+/** Older themes have no slot colours; they keep the defaults. */
+function complete(theme: Theme | null): Required<Theme> {
+    return { ...DEFAULT_THEME, ...theme };
+}
+
+function same(a: Required<Theme>, b: Required<Theme>): boolean {
+    return keys.every((key) => a[key].toLowerCase() === b[key].toLowerCase());
+}
+
+const colorFields: { key: (typeof keys)[number]; label: string }[] = [
+    { key: 'accent', label: 'Akzentfarbe' },
+    { key: 'background', label: 'Hintergrund' },
+    { key: 'slot_text', label: 'Text „hier einfügen“' },
+    { key: 'slot_border', label: 'Rahmen „hier einfügen“' },
+];
+
+const draft = ref<Required<Theme>>(complete(props.branding.theme));
 const busy = ref(false);
 const error = ref<string | null>(null);
 const saved = ref(false);
@@ -30,23 +48,13 @@ const logoInput = ref<HTMLInputElement | null>(null);
 
 watch(
     () => props.branding.theme,
-    (theme) => (draft.value = { ...(theme ?? DEFAULT_THEME) }),
+    (theme) => (draft.value = complete(theme)),
 );
 
-const isDefault = computed(
-    () =>
-        draft.value.accent.toLowerCase() === DEFAULT_THEME.accent &&
-        draft.value.background.toLowerCase() === DEFAULT_THEME.background,
+const isDefault = computed(() => same(draft.value, DEFAULT_THEME));
+const isDirty = computed(
+    () => !same(complete(props.branding.theme), draft.value),
 );
-const isDirty = computed(() => {
-    const current = props.branding.theme ?? DEFAULT_THEME;
-
-    return (
-        current.accent.toLowerCase() !== draft.value.accent.toLowerCase() ||
-        current.background.toLowerCase() !==
-            draft.value.background.toLowerCase()
-    );
-});
 
 const warnings = computed(() => {
     const list: string[] = [];
@@ -162,33 +170,24 @@ function uploadLogo(event: Event) {
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
-                    <label class="flex flex-col gap-1.5">
-                        <span class="text-xs text-navy/70">Akzentfarbe</span>
+                    <label
+                        v-for="field in colorFields"
+                        :key="field.key"
+                        class="flex flex-col gap-1.5"
+                    >
+                        <span class="text-xs text-navy/70">{{
+                            field.label
+                        }}</span>
                         <span
                             class="flex h-10 items-center gap-2 rounded-btn border border-navy/15 px-2"
                         >
                             <input
-                                v-model="draft.accent"
+                                v-model="draft[field.key]"
                                 type="color"
                                 class="size-7 cursor-pointer rounded border-0 bg-transparent p-0"
                             />
                             <span class="font-mono text-xs">
-                                {{ draft.accent }}
-                            </span>
-                        </span>
-                    </label>
-                    <label class="flex flex-col gap-1.5">
-                        <span class="text-xs text-navy/70">Hintergrund</span>
-                        <span
-                            class="flex h-10 items-center gap-2 rounded-btn border border-navy/15 px-2"
-                        >
-                            <input
-                                v-model="draft.background"
-                                type="color"
-                                class="size-7 cursor-pointer rounded border-0 bg-transparent p-0"
-                            />
-                            <span class="font-mono text-xs">
-                                {{ draft.background }}
+                                {{ draft[field.key] }}
                             </span>
                         </span>
                     </label>
@@ -253,6 +252,11 @@ function uploadLogo(event: Event) {
                     >
                         <span class="text-sm font-semibold">1982</span>
                         <span class="text-[10px] text-white/50">Africa</span>
+                    </div>
+                    <div
+                        class="flex h-8 items-center justify-center gap-1 rounded-md border border-dashed border-[var(--slot-border,rgb(255_255_255/0.5))] text-xs text-[var(--slot-text,rgb(255_255_255/0.75))]"
+                    >
+                        <Plus class="size-3" />hier einfügen
                     </div>
                     <div
                         class="flex h-8 items-center justify-center rounded-md bg-royal text-xs font-semibold shadow-[0_0_0_2px_rgba(255,255,255,0.15)]"

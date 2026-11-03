@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { Lock, QrCode, Timer, Trophy, Users } from '@lucide/vue';
+import { Lock, QrCode, Star, Timer, Trophy, Users } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import LiveChip from '@/components/game/LiveChip.vue';
 import RankBadge from '@/components/game/RankBadge.vue';
@@ -91,6 +91,7 @@ const podium = computed(() => {
     return { first, second, third };
 });
 const rest = computed<LeaderboardRow[]>(() => props.top10.slice(3));
+const hasBonus = computed(() => props.top10.some((row) => row.bonus > 0));
 </script>
 
 <template>
@@ -286,7 +287,10 @@ const rest = computed<LeaderboardRow[]>(() => props.top10.slice(3));
                 <div class="text-8xl font-semibold">Stück übersprungen</div>
             </div>
             <div class="flex flex-col justify-center gap-1.5">
-                <div class="mb-2 text-xl text-white/50">Rangliste · Top 10</div>
+                <div class="mb-2 flex text-xl text-white/50">
+                    Rangliste · Top 10
+                    <span v-if="hasBonus" class="ml-auto">Karten · Bonus</span>
+                </div>
                 <div
                     v-for="row in top10"
                     :key="row.player_id"
@@ -296,6 +300,12 @@ const rest = computed<LeaderboardRow[]>(() => props.top10.slice(3));
                     <span class="truncate text-2xl">{{ row.name }}</span>
                     <span class="ml-auto text-2xl font-semibold">
                         {{ row.score }}
+                    </span>
+                    <span
+                        v-if="hasBonus"
+                        class="flex w-14 shrink-0 items-center justify-end gap-1 text-xl text-white/75"
+                    >
+                        <Star class="size-4 text-amber" />{{ row.bonus }}
                     </span>
                 </div>
             </div>
@@ -315,6 +325,13 @@ const rest = computed<LeaderboardRow[]>(() => props.top10.slice(3));
                 <span class="font-normal text-white/75">
                     · {{ props.state.tiebreaker?.artist }}
                 </span>
+            </div>
+            <div
+                v-if="tiebreak_players.length"
+                class="text-[32px] leading-snug text-pretty"
+            >
+                Gleichstand zwischen
+                <b class="font-semibold">{{ tiebreak_players.join(', ') }}</b>
             </div>
             <div class="text-[26px] text-white/75">
                 Jahr auf dem Handy eingeben. Die kleinste Abweichung gewinnt,
@@ -353,6 +370,9 @@ const rest = computed<LeaderboardRow[]>(() => props.top10.slice(3));
                         </div>
                         <div class="text-xl">
                             {{ podium.second.score }} Karten
+                            <template v-if="podium.second.bonus">
+                                · {{ podium.second.bonus }} Bonus
+                            </template>
                         </div>
                     </div>
                 </div>
@@ -374,6 +394,9 @@ const rest = computed<LeaderboardRow[]>(() => props.top10.slice(3));
                         </div>
                         <div class="text-xl">
                             {{ podium.first.score }} Karten
+                            <template v-if="podium.first.bonus">
+                                · {{ podium.first.bonus }} Bonus
+                            </template>
                         </div>
                     </div>
                 </div>
@@ -391,6 +414,9 @@ const rest = computed<LeaderboardRow[]>(() => props.top10.slice(3));
                         </div>
                         <div class="text-xl">
                             {{ podium.third.score }} Karten
+                            <template v-if="podium.third.bonus">
+                                · {{ podium.third.bonus }} Bonus
+                            </template>
                             <template
                                 v-if="podium.third.tiebreak_deviation !== null"
                             >
@@ -409,6 +435,12 @@ const rest = computed<LeaderboardRow[]>(() => props.top10.slice(3));
                     <span class="min-w-6 text-white/50">{{ row.rank }}</span>
                     <span class="truncate">{{ row.name }}</span>
                     <span class="ml-auto font-semibold">{{ row.score }}</span>
+                    <span
+                        v-if="row.bonus"
+                        class="flex items-center gap-1 text-base text-white/75"
+                    >
+                        <Star class="size-3.5 text-amber" />{{ row.bonus }}
+                    </span>
                 </div>
             </div>
         </div>

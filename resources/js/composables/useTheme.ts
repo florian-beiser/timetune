@@ -11,9 +11,11 @@ export function themeStyle(theme: Theme | null): Record<string, string> {
         return {};
     }
 
-    const { accent, background } = theme;
+    const { accent, background, slot_text, slot_border } = theme;
 
     return {
+        ...(slot_text ? { '--slot-text': slot_text } : {}),
+        ...(slot_border ? { '--slot-border': slot_border } : {}),
         '--color-royal': accent,
         '--color-royal-hover': `color-mix(in srgb, ${accent} 82%, black)`,
         '--color-night': background,
@@ -44,7 +46,10 @@ export function contrastWithWhite(hex: string): number {
     return 1.05 / (luminance + 0.05);
 }
 
-export const DEFAULT_THEME: Theme = {
+/** The slot colours equal the default white at 75 % / 50 % on the default background. */
+export const DEFAULT_THEME: Required<Theme> = {
     accent: '#1967e6',
     background: '#04143f',
+    slot_text: '#c0c4cf',
+    slot_border: '#828a9f',
 };
