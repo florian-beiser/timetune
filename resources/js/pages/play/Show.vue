@@ -123,7 +123,13 @@ function applyState(next: PublicState) {
         );
     }
 
-    if (next.state === 'FINISHED' || next.state === 'LOBBY') {
+    // Whether this player may take part in the tiebreaker is only known
+    // to the server once the tiebreaker has started.
+    if (
+        next.state === 'TIEBREAKER' ||
+        next.state === 'FINISHED' ||
+        next.state === 'LOBBY'
+    ) {
         refreshSoon();
     }
 }
